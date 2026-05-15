@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
 import { StatusPanel } from "@/components/layout/StatusPanel";
-import { TerminalPlaceholder } from "@/components/terminal/TerminalPlaceholder";
+import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 
 export function AppShell() {
@@ -16,7 +16,7 @@ export function AppShell() {
           <div className="flex min-h-0 flex-1">
             <ProjectSidebar />
             <main className="flex min-w-0 flex-1 flex-col">
-              <TerminalPlaceholder />
+              <TerminalShell />
               <StatusPanel />
             </main>
           </div>

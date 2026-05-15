@@ -55,3 +55,11 @@ textarea {
 ::selection {
   background: rgb(14 165 233 / 0.22);
 }
+
+.xterm {
+  height: 100%;
+}
+
+.xterm .xterm-viewport {
+  background-color: transparent;
+}

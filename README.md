@@ -2,7 +2,7 @@
 
 SuperTerminal is a local-first desktop shell for working with AI coding CLI tools from one focused interface.
 
-Phase 1 adds a real local project file explorer. It still does not execute terminal commands, detect installed tools, install CLIs, manage credentials, or upload project code.
+Phase 2 adds an xterm.js terminal UI shell with frontend-only demo sessions. It still does not execute terminal commands, detect installed tools, install CLIs, manage credentials, or upload project code.
 
 ## What Is Included
 
@@ -16,7 +16,8 @@ Phase 1 adds a real local project file explorer. It still does not execute termi
 - Real local project folder scanning
 - Expandable file explorer
 - Safe text file preview
-- Terminal placeholder panel
+- xterm.js terminal UI shell
+- Frontend-only demo terminal sessions
 - Session/status panel
 - Settings placeholder
 - Rust/Tauri filesystem commands for project scanning and file preview
@@ -72,6 +73,12 @@ The scanner skips noisy folders such as `.git`, `node_modules`, `dist`, `build`,
 Safe text files can be previewed read-only in the sidebar. Supported examples include `.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.md`, `.txt`, `.css`, `.html`, `.rs`, `.py`, `.toml`, `.yaml`, and `.xml`.
 
 Secret/env files such as `.env` are never previewed. Large files are truncated at 100 KB. Binary files are rejected.
+
+## Demo Terminal
+
+After opening a project, click `Start Demo Session` in the terminal toolbar. The xterm surface writes a demo banner with the selected tool and project context.
+
+Typing is captured locally in frontend state. Pressing Enter prints a no-execution message and returns to the prompt. No command is spawned and no PTY backend is connected in Phase 2.
 
 ## Build
 

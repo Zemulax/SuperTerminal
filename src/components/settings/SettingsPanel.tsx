@@ -15,7 +15,11 @@ const sections = [
   },
   {
     title: "Terminal preferences",
-    body: "Font, shell behavior, scrollback, and PTY defaults will live here later.",
+    body: "Default shell, font size, scrollback, and terminal theme controls will live here later.",
+  },
+  {
+    title: "PTY backend status",
+    body: "Not implemented yet. Phase 2 captures input locally without process execution.",
   },
   {
     title: "Install safety",
@@ -23,7 +27,11 @@ const sections = [
   },
   {
     title: "Transcript capture",
-    body: "Session transcripts will be local-first and project-scoped when implemented.",
+    body: "Terminal transcript capture is local-only demo state for now; persistence comes later.",
+  },
+  {
+    title: "Session safety",
+    body: "Confirm-before-close and active-session recovery settings will be added with the PTY backend.",
   },
   {
     title: "Privacy/local-first",
@@ -43,7 +51,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <div className="flex h-16 items-center justify-between border-b border-border px-5">
         <div>
           <div className="text-sm font-semibold text-slate-950">Settings</div>
-          <div className="text-xs text-slate-500">Phase 0 placeholders</div>
+          <div className="text-xs text-slate-500">Phase 2 placeholders</div>
         </div>
         <Button aria-label="Close settings" onClick={onClose} size="icon" variant="ghost">
           <X className="h-4 w-4" aria-hidden />
