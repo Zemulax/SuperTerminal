@@ -11,7 +11,7 @@ type SettingsPanelProps = {
 const sections = [
   {
     title: "Tool adapters",
-    body: "Adapter definitions will map tools to detection, launch, and setup guidance.",
+    body: "Adapters define local CLI commands, version checks, command overrides, and launch previews.",
   },
   {
     title: "Terminal preferences",
@@ -19,7 +19,7 @@ const sections = [
   },
   {
     title: "PTY backend status",
-    body: "Implemented as a single local shell session. Tool-specific launch adapters still come later.",
+    body: "Implemented as a single local session that can start a default shell or an explicitly launched ready adapter.",
   },
   {
     title: "Install safety",
@@ -51,7 +51,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <div className="flex h-16 items-center justify-between border-b border-border px-5">
         <div>
           <div className="text-sm font-semibold text-slate-950">Settings</div>
-          <div className="text-xs text-slate-500">Phase 3 placeholders</div>
+          <div className="text-xs text-slate-500">Phase 4 adapter registry</div>
         </div>
         <Button aria-label="Close settings" onClick={onClose} size="icon" variant="ghost">
           <X className="h-4 w-4" aria-hidden />
@@ -71,10 +71,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-950">Mock tools</h2>
+          <h2 className="text-sm font-semibold text-slate-950">Tool adapters</h2>
+          <p className="mt-1 text-sm leading-5 text-slate-500">
+            SuperTerminal does not bundle or install these tools. Detection only
+            runs short local version commands. Install commands are preview-only.
+            Command overrides are executable paths or command names, not extra
+            arguments.
+          </p>
           <div className="mt-3 space-y-3">
             {tools.map((tool) => (
-              <ToolCard key={tool.id} tool={tool} />
+              <ToolCard key={tool.definition.id} tool={tool} />
             ))}
           </div>
         </div>

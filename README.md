@@ -2,7 +2,7 @@
 
 SuperTerminal is a local-first desktop shell for working with AI coding CLI tools from one focused interface.
 
-Phase 3 adds a real local PTY-backed terminal host. It still does not detect tools, install CLIs, manage credentials, inject prompts, or upload project code.
+Phase 4 adds a local Tool Adapter Registry for detecting, configuring, previewing, and launching CLI tools through the existing PTY host. It still does not install CLIs, manage credentials, inject prompts, or upload project code.
 
 ## What Is Included
 
@@ -11,7 +11,11 @@ Phase 3 adds a real local PTY-backed terminal host. It still does not detect too
 - Tailwind CSS styling
 - shadcn/ui-compatible component structure
 - Zustand stores for project, tool, and session state
-- Mock tool switcher for Codex CLI, Claude CLI, OpenCode, OpenClaude, Grok CLI, and Generic CLI
+- Tool Adapter Registry for Codex CLI, Claude CLI, OpenCode, OpenClaude, Grok CLI, and Generic CLI
+- Local version/status checks with short timeouts
+- Command overrides stored in frontend local state
+- Launch previews for ready adapters
+- Direct launch of ready adapters through the local PTY host
 - Demo project fallback
 - Real local project folder scanning
 - Expandable file explorer
@@ -75,7 +79,7 @@ Safe text files can be previewed read-only in the sidebar. Supported examples in
 
 Secret/env files such as `.env` are never previewed. Large files are truncated at 100 KB. Binary files are rejected.
 
-## Demo Terminal
+## Real Terminal
 
 After opening a project, click `Start Terminal` in the terminal toolbar. SuperTerminal starts a local shell in the selected project folder and streams it through xterm.js.
 
@@ -91,6 +95,18 @@ Click `Stop Terminal` to kill the hosted shell session. Natural shell exit is de
 
 Typing is captured locally in frontend state. Pressing Enter prints a no-execution message and returns to the prompt. No command is spawned in demo mode.
 
+## Tool Adapters
+
+Open Settings to inspect adapter definitions, command overrides, status, detected version output, and install command previews.
+
+Use `Check` for one adapter or `Check All` from the header switcher. Detection only runs short local version commands such as `codex --version` or `claude --version`.
+
+Generic CLI starts as `needs setup`. Set its command override to a command available on your machine, such as `powershell.exe` or `cmd.exe` on Windows, then run `Check`.
+
+Install command previews are informational only. SuperTerminal does not run install commands in Phase 4.
+
+After opening a project and checking a ready adapter, use `Build Launch Preview` in Settings or `Launch Tool` in the terminal toolbar. Launch starts the selected command inside the selected project path through the local PTY host. No prompts or project context are injected.
+
 ## Build
 
 ```powershell
@@ -100,4 +116,4 @@ npm.cmd run tauri:build
 
 ## Current Boundaries
 
-SuperTerminal does not bundle or replace Codex CLI, Claude CLI, OpenCode, OpenClaude, Grok CLI, or any other third-party CLI. Future phases may add explicit detection, launch, install guidance, PTY hosting, project context injection, and transcript capture.
+SuperTerminal does not bundle or replace Codex CLI, Claude CLI, OpenCode, OpenClaude, Grok CLI, or any other third-party CLI. Future phases may add guided installation, project context injection, stronger adapter launch templates, and transcript capture.

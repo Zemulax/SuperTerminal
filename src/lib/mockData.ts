@@ -1,50 +1,66 @@
-import type { Project, ToolDefinition } from "./types";
+import type { Project, ToolAdapterDefinition, ToolDefinition } from "./types";
 
-export const mockTools: ToolDefinition[] = [
+export const defaultToolAdapters: ToolAdapterDefinition[] = [
   {
     id: "codex",
     name: "Codex CLI",
-    description: "OpenAI coding agent CLI for local project work.",
+    description: "OpenAI Codex CLI for AI-assisted coding workflows.",
     defaultCommand: "codex",
-    installCommand: "npm install -g @openai/codex",
-    status: "ready",
+    detectionArgs: [["--version"], ["-V"]],
+    installCommandPreview: "npm install -g @openai/codex",
   },
   {
     id: "claude",
     name: "Claude CLI",
-    description: "Anthropic Claude command line workflow for coding tasks.",
+    description: "Claude command-line coding assistant.",
     defaultCommand: "claude",
-    status: "needs_setup",
+    detectionArgs: [["--version"], ["-v"]],
+    installCommandPreview: "See official Claude CLI installation instructions.",
   },
   {
     id: "opencode",
     name: "OpenCode",
-    description: "Open source terminal agent interface for software projects.",
+    description: "OpenCode-compatible AI coding CLI.",
     defaultCommand: "opencode",
-    status: "missing",
+    detectionArgs: [["--version"], ["-v"]],
+    installCommandPreview: "Configure install command in settings.",
   },
   {
     id: "openclaude",
     name: "OpenClaude",
-    description: "Community Claude-compatible coding CLI adapter.",
+    description: "OpenClaude-compatible AI coding CLI.",
     defaultCommand: "openclaude",
-    status: "not_checked",
+    detectionArgs: [["--version"], ["-v"]],
+    installCommandPreview: "Configure install command in settings.",
   },
   {
     id: "grok",
     name: "Grok CLI",
-    description: "Grok-powered terminal workflow placeholder.",
+    description: "Grok-compatible AI coding CLI.",
     defaultCommand: "grok",
-    status: "missing",
+    detectionArgs: [["--version"], ["-v"]],
+    installCommandPreview: "Configure install command in settings.",
   },
   {
     id: "generic",
     name: "Generic CLI",
-    description: "Bring your own coding CLI command later.",
-    defaultCommand: "<custom-command>",
-    status: "not_checked",
+    description: "User-configured CLI tool.",
+    defaultCommand: "custom-tool",
+    detectionArgs: [
+      ["--version"],
+      ["-v"],
+      ["-Command", "$PSVersionTable.PSVersion.ToString()"],
+      ["/c", "ver"],
+    ],
+    installCommandPreview: "Configure manually.",
   },
 ];
+
+export const mockTools: ToolDefinition[] = defaultToolAdapters.map((definition) => ({
+  ...definition,
+  status: definition.id === "generic" ? "needs_setup" : "not_checked",
+  installCommand: definition.installCommandPreview,
+}));
 
 export const mockProject: Project = {
   id: "budget-cargo",

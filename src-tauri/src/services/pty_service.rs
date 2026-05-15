@@ -18,6 +18,7 @@ use crate::services::file_scanner;
 pub struct StartPtySessionRequest {
     pub project_path: String,
     pub shell: Option<String>,
+    pub args: Option<Vec<String>>,
     pub cols: u16,
     pub rows: u16,
 }
@@ -134,6 +135,9 @@ impl PtyState {
             .map_err(|error| format!("Unable to open PTY: {error}"))?;
 
         let mut command = CommandBuilder::new(&shell);
+        for arg in request.args.unwrap_or_default() {
+            command.arg(arg);
+        }
         command.cwd(project_path.as_os_str());
 
         let child = pair

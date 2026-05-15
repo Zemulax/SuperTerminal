@@ -12,6 +12,8 @@ fn main() {
             commands::project::read_text_file_preview,
             commands::tools::get_mock_environment_status,
             commands::terminal::get_terminal_placeholder_status,
+            commands::tools::check_tool,
+            commands::tools::build_tool_launch_spec,
             commands::terminal::start_pty_session,
             commands::terminal::write_pty_input,
             commands::terminal::resize_pty_session,

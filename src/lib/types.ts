@@ -1,12 +1,67 @@
-export type ToolStatus = "ready" | "missing" | "needs_setup" | "not_checked";
+export type ToolAdapterId =
+  | "codex"
+  | "claude"
+  | "opencode"
+  | "openclaude"
+  | "grok"
+  | "generic"
+  | string;
 
-export type ToolDefinition = {
-  id: string;
+export type ToolStatus =
+  | "not_checked"
+  | "checking"
+  | "ready"
+  | "missing"
+  | "needs_setup"
+  | "error";
+
+export type ToolAdapterDefinition = {
+  id: ToolAdapterId;
   name: string;
   description: string;
   defaultCommand: string;
-  installCommand?: string;
+  detectionArgs: string[][];
+  installCommandPreview?: string;
+};
+
+export type ToolAdapterConfig = {
+  adapterId: ToolAdapterId;
+  enabled: boolean;
+  commandOverride?: string;
+};
+
+export type ToolAdapterState = {
+  definition: ToolAdapterDefinition;
+  config: ToolAdapterConfig;
   status: ToolStatus;
+  resolvedCommand: string;
+  version?: string;
+  message?: string;
+  lastCheckedAt?: string;
+};
+
+export type ToolDefinition = ToolAdapterDefinition & {
+  status: ToolStatus;
+  resolvedCommand?: string;
+  version?: string;
+  message?: string;
+  installCommand?: string;
+};
+
+export type ToolCheckResult = {
+  status: ToolStatus;
+  resolvedCommand: string;
+  version?: string;
+  message: string;
+};
+
+export type ToolLaunchSpec = {
+  adapterId: ToolAdapterId;
+  name: string;
+  command: string;
+  args: string[];
+  workingDirectory: string;
+  preview: string;
 };
 
 export type ProjectFileNode = {

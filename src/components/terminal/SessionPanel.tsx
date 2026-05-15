@@ -5,12 +5,13 @@ import { useToolStore } from "@/stores/toolStore";
 
 export function SessionPanel() {
   const selectedProject = useProjectStore((state) => state.selectedProject);
-  const tools = useToolStore((state) => state.tools);
+  const adapters = useToolStore((state) => state.adapters);
   const activeToolId = useToolStore((state) => state.activeToolId);
   const activeSession = useSessionStore((state) => state.activeSession);
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
   const transcriptPreview = useSessionStore((state) => state.transcriptPreview);
-  const activeTool = tools.find((tool) => tool.id === activeToolId) ?? tools[0];
+  const activeTool =
+    adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
@@ -31,7 +32,8 @@ export function SessionPanel() {
           Context
         </div>
         <div className="mt-2 text-sm text-slate-700">
-          {selectedProject?.name ?? "No project"} {"->"} {activeTool.name}
+          {selectedProject?.name ?? "No project"} {"->"}{" "}
+          {activeTool.definition.name}
         </div>
       </div>
 

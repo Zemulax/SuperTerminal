@@ -24,6 +24,7 @@ type SessionState = {
     cols: number,
     rows: number,
     shell?: string,
+    args?: string[],
   ) => Promise<PtySessionRecord | undefined>;
   writePtyInput: (data: string) => Promise<void>;
   resizePtySession: (cols: number, rows: number) => Promise<void>;
@@ -54,7 +55,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   shell: undefined,
   cols: 80,
   rows: 24,
-  startPtySession: async (projectPath, cols, rows, shell) => {
+  startPtySession: async (projectPath, cols, rows, shell, args = []) => {
     if (get().sessionStatus === "starting" || get().sessionStatus === "active") {
       const message = "A terminal session is already active.";
       set({ error: message });
@@ -75,6 +76,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         request: {
           projectPath,
           shell,
+          args,
           cols,
           rows,
         },

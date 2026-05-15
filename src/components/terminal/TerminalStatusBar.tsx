@@ -2,11 +2,11 @@ import type {
   Project,
   TerminalMode,
   TerminalSessionStatus,
-  ToolDefinition,
+  ToolAdapterState,
 } from "@/lib/types";
 
 type TerminalStatusBarProps = {
-  activeTool: ToolDefinition;
+  activeTool: ToolAdapterState;
   project?: Project;
   mode: TerminalMode;
   status: TerminalSessionStatus;
@@ -40,7 +40,7 @@ export function TerminalStatusBar({
         {project?.path ?? "Open a project folder to enable terminal hosting"}
       </div>
       <div className="flex flex-wrap gap-2 text-slate-300">
-        <span>{shell ?? activeTool.defaultCommand}</span>
+        <span>{shell ?? activeTool.resolvedCommand}</span>
         <span>|</span>
         <span>
           {cols}x{rows}

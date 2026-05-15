@@ -27,9 +27,11 @@ export function TerminalShell() {
   const lastProjectIdRef = useRef<string>();
 
   const selectedProject = useProjectStore((state) => state.selectedProject);
-  const tools = useToolStore((state) => state.tools);
+  const adapters = useToolStore((state) => state.adapters);
   const activeToolId = useToolStore((state) => state.activeToolId);
-  const activeTool = tools.find((tool) => tool.id === activeToolId) ?? tools[0];
+  const buildLaunchSpec = useToolStore((state) => state.buildLaunchSpec);
+  const activeTool =
+    adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
   const mode = useSessionStore((state) => state.mode);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
@@ -50,8 +52,8 @@ export function TerminalShell() {
   const setInputBuffer = useSessionStore((state) => state.setInputBuffer);
 
   const writePrompt = useCallback(() => {
-    terminalRef.current?.write(`${activeTool.defaultCommand}> `);
-  }, [activeTool.defaultCommand]);
+    terminalRef.current?.write(`${activeTool.resolvedCommand}> `);
+  }, [activeTool.resolvedCommand]);
 
   const writeLine = useCallback(
     (line = "") => {
@@ -90,6 +92,51 @@ export function TerminalShell() {
     writeLine,
   ]);
 
+  const handleLaunchTool = useCallback(async () => {
+    if (!selectedProject || sessionStatus === "starting" || sessionStatus === "active") {
+      return;
+    }
+
+    const dimensions = terminalRef.current?.getDimensions() ?? { cols: 80, rows: 24 };
+    const spec = await buildLaunchSpec(activeTool.definition.id, selectedProject.path);
+
+    if (!spec) {
+      writeLine("Unable to build launch spec for selected tool.");
+      return;
+    }
+
+    terminalRef.current?.clear();
+    clearTranscript();
+    setInputBuffer("");
+    writeLine(`Launching ${spec.name} inside SuperTerminal's local PTY...`);
+    writeLine("No prompts or project context are injected in this phase.");
+    writeLine("Launch preview:");
+    writeLine(spec.preview);
+    writeLine("");
+
+    try {
+      await startPtySession(
+        selectedProject.path,
+        dimensions.cols,
+        dimensions.rows,
+        spec.command,
+        spec.args,
+      );
+      terminalRef.current?.focus();
+    } catch (error) {
+      writeLine(`Failed to launch tool: ${String(error)}`);
+    }
+  }, [
+    activeTool.definition.id,
+    buildLaunchSpec,
+    clearTranscript,
+    selectedProject,
+    sessionStatus,
+    setInputBuffer,
+    startPtySession,
+    writeLine,
+  ]);
+
   const handleStartDemo = useCallback(() => {
     if (!selectedProject || sessionStatus === "starting" || sessionStatus === "active") {
       return;
@@ -101,10 +148,10 @@ export function TerminalShell() {
 
     clearTranscript();
     setInputBuffer("");
-    startDemoSession(activeTool.id, selectedProject.id);
+    startDemoSession(activeTool.definition.id, selectedProject.id);
     terminalRef.current?.clear();
     writeLine("SuperTerminal Demo Session");
-    writeLine(`Tool: ${activeTool.name}`);
+    writeLine(`Tool: ${activeTool.definition.name}`);
     writeLine(`Project: ${selectedProject.name}`);
     writeLine(`Path: ${selectedProject.path}`);
     writeLine("");
@@ -118,8 +165,8 @@ export function TerminalShell() {
       terminalRef.current?.focus();
     }, 450);
   }, [
-    activeTool.id,
-    activeTool.name,
+    activeTool.definition.id,
+    activeTool.definition.name,
     clearTranscript,
     selectedProject,
     sessionStatus,
@@ -307,16 +354,23 @@ export function TerminalShell() {
   }, []);
 
   useEffect(() => {
-    if (lastToolIdRef.current && lastToolIdRef.current !== activeTool.id) {
+    if (lastToolIdRef.current && lastToolIdRef.current !== activeTool.definition.id) {
       writeLine("");
-      writeLine(`Switched active tool to ${activeTool.name}.`);
+      writeLine(`Switched active tool to ${activeTool.definition.name}.`);
       if (mode === "demo" && sessionStatus === "active") {
         writePrompt();
       }
     }
 
-    lastToolIdRef.current = activeTool.id;
-  }, [activeTool.id, activeTool.name, mode, sessionStatus, writeLine, writePrompt]);
+    lastToolIdRef.current = activeTool.definition.id;
+  }, [
+    activeTool.definition.id,
+    activeTool.definition.name,
+    mode,
+    sessionStatus,
+    writeLine,
+    writePrompt,
+  ]);
 
   useEffect(() => {
     if (
@@ -357,6 +411,7 @@ export function TerminalShell() {
             mode={mode}
             onClear={handleClear}
             onFocus={handleFocus}
+            onLaunchTool={handleLaunchTool}
             onStart={handleStart}
             onStartDemo={handleStartDemo}
             onStop={handleStop}

@@ -14,9 +14,10 @@ export function Header({ onOpenSettings }: HeaderProps) {
   const selectedProject = useProjectStore((state) => state.selectedProject);
   const openProjectByPath = useProjectStore((state) => state.openProjectByPath);
   const isOpeningProject = useProjectStore((state) => state.isOpeningProject);
-  const tools = useToolStore((state) => state.tools);
+  const adapters = useToolStore((state) => state.adapters);
   const activeToolId = useToolStore((state) => state.activeToolId);
-  const activeTool = tools.find((tool) => tool.id === activeToolId) ?? tools[0];
+  const activeTool =
+    adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
 
   const handleOpenProject = () => {
     const path = window.prompt("Paste a local project folder path");
@@ -56,7 +57,7 @@ export function Header({ onOpenSettings }: HeaderProps) {
             </span>
           ) : null}
           <span className="truncate text-xs text-slate-500">
-            {activeTool.name}
+            {activeTool.definition.name}
           </span>
           <ToolStatusBadge status={activeTool.status} />
         </div>

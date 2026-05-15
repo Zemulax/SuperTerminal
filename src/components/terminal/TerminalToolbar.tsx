@@ -6,16 +6,17 @@ import type {
   Project,
   TerminalMode,
   TerminalSessionStatus,
-  ToolDefinition,
+  ToolAdapterState,
 } from "@/lib/types";
 
 type TerminalToolbarProps = {
-  activeTool: ToolDefinition;
+  activeTool: ToolAdapterState;
   project?: Project;
   status: TerminalSessionStatus;
   mode: TerminalMode;
   shell?: string;
   onStart: () => void;
+  onLaunchTool: () => void;
   onStartDemo: () => void;
   onStop: () => void;
   onClear: () => void;
@@ -29,12 +30,14 @@ export function TerminalToolbar({
   mode,
   shell,
   onStart,
+  onLaunchTool,
   onStartDemo,
   onStop,
   onClear,
   onFocus,
 }: TerminalToolbarProps) {
   const canStart = Boolean(project) && status !== "starting" && status !== "active";
+  const canLaunchTool = canStart && activeTool.status === "ready";
   const canStop = status === "active" || status === "starting";
 
   return (
@@ -43,7 +46,7 @@ export function TerminalToolbar({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold text-white">
-              {activeTool.name}
+              {activeTool.definition.name}
             </span>
             <ToolStatusBadge status={activeTool.status} />
             <Badge status={status} />
@@ -70,6 +73,19 @@ export function TerminalToolbar({
         >
           <PlayCircle className="h-4 w-4" aria-hidden />
           Start Terminal
+        </Button>
+        <Button
+          disabled={!canLaunchTool}
+          onClick={onLaunchTool}
+          size="sm"
+          title={
+            activeTool.status === "ready"
+              ? "Launch selected CLI in the local PTY"
+              : "Tool must be ready before launch"
+          }
+          variant="secondary"
+        >
+          Launch Tool
         </Button>
         <Button
           disabled={!canStart}
