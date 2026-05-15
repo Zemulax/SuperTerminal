@@ -3,7 +3,14 @@ import { cn, formatStatusLabel } from "@/lib/utils";
 import type { ToolStatus } from "@/lib/types";
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
-  status?: ToolStatus | "active" | "idle" | "stopped" | "failed" | "starting";
+  status?:
+    | ToolStatus
+    | "active"
+    | "idle"
+    | "stopped"
+    | "exited"
+    | "failed"
+    | "starting";
 };
 
 const statusClasses: Record<string, string> = {
@@ -14,6 +21,7 @@ const statusClasses: Record<string, string> = {
   active: "border-cyan-200 bg-cyan-50 text-cyan-700",
   idle: "border-slate-200 bg-slate-50 text-slate-600",
   stopped: "border-slate-200 bg-slate-50 text-slate-600",
+  exited: "border-slate-200 bg-slate-50 text-slate-600",
   failed: "border-rose-200 bg-rose-50 text-rose-700",
   starting: "border-blue-200 bg-blue-50 text-blue-700",
 };

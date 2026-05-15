@@ -62,12 +62,12 @@ export function StatusPanel() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             <ShieldCheck className="h-4 w-4" aria-hidden />
-            Phase 2 boundaries
+            Phase 3 boundaries
           </div>
           <p className="mt-2 text-sm leading-5 text-slate-600">
-            Terminal input is captured locally. No command execution,
-            credentials, API keys, installs, or project uploads are handled in
-            this phase.
+            The terminal hosts a local shell after explicit user start. No tool
+            adapters, install helpers, credentials, API keys, or project uploads
+            are handled in this phase.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {futureCapabilities.map((capability) => (

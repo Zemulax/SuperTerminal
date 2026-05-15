@@ -60,13 +60,49 @@ export type TerminalSessionStatus =
   | "starting"
   | "active"
   | "stopped"
+  | "exited"
   | "failed";
+
+export type TerminalMode = "demo" | "pty";
 
 export type TerminalSession = {
   id: string;
   projectId?: string;
-  toolId: string;
+  toolId?: string;
   status: TerminalSessionStatus;
   startedAt?: string;
   endedAt?: string;
+};
+
+export type PtySessionRecord = {
+  id: string;
+  projectPath: string;
+  shell: string;
+  status: string;
+  cols: number;
+  rows: number;
+  startedAt: string;
+  endedAt?: string;
+  exitCode?: number;
+};
+
+export type PtyOutputEvent = {
+  sessionId: string;
+  data: string;
+};
+
+export type PtyExitEvent = {
+  sessionId: string;
+  exitCode?: number;
+  status: "stopped" | "exited" | "failed";
+};
+
+export type PtyErrorEvent = {
+  sessionId: string;
+  message: string;
+};
+
+export type PtyStatusEvent = {
+  sessionId: string;
+  status: TerminalSessionStatus;
 };

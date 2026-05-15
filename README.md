@@ -2,7 +2,7 @@
 
 SuperTerminal is a local-first desktop shell for working with AI coding CLI tools from one focused interface.
 
-Phase 2 adds an xterm.js terminal UI shell with frontend-only demo sessions. It still does not execute terminal commands, detect installed tools, install CLIs, manage credentials, or upload project code.
+Phase 3 adds a real local PTY-backed terminal host. It still does not detect tools, install CLIs, manage credentials, inject prompts, or upload project code.
 
 ## What Is Included
 
@@ -17,6 +17,7 @@ Phase 2 adds an xterm.js terminal UI shell with frontend-only demo sessions. It 
 - Expandable file explorer
 - Safe text file preview
 - xterm.js terminal UI shell
+- Rust/Tauri PTY host for one local shell session
 - Frontend-only demo terminal sessions
 - Session/status panel
 - Settings placeholder
@@ -76,9 +77,19 @@ Secret/env files such as `.env` are never previewed. Large files are truncated a
 
 ## Demo Terminal
 
-After opening a project, click `Start Demo Session` in the terminal toolbar. The xterm surface writes a demo banner with the selected tool and project context.
+After opening a project, click `Start Terminal` in the terminal toolbar. SuperTerminal starts a local shell in the selected project folder and streams it through xterm.js.
 
-Typing is captured locally in frontend state. Pressing Enter prints a no-execution message and returns to the prompt. No command is spawned and no PTY backend is connected in Phase 2.
+On Windows the default shell is `powershell.exe`, with `cmd.exe` fallback. On macOS/Linux the default comes from `SHELL`, then `/bin/bash`, then `/bin/sh`.
+
+Input is forwarded directly to the local PTY session. This supports normal shell interaction such as typing, Enter, Ctrl+C, arrow keys where the shell supports them, and pasted text.
+
+Click `Stop Terminal` to kill the hosted shell session. Natural shell exit is detected and updates the UI.
+
+## Demo Terminal
+
+`Demo Mode` remains available as a frontend-only fallback. The xterm surface writes a demo banner with the selected tool and project context.
+
+Typing is captured locally in frontend state. Pressing Enter prints a no-execution message and returns to the prompt. No command is spawned in demo mode.
 
 ## Build
 

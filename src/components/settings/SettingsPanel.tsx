@@ -19,7 +19,7 @@ const sections = [
   },
   {
     title: "PTY backend status",
-    body: "Not implemented yet. Phase 2 captures input locally without process execution.",
+    body: "Implemented as a single local shell session. Tool-specific launch adapters still come later.",
   },
   {
     title: "Install safety",
@@ -31,7 +31,7 @@ const sections = [
   },
   {
     title: "Session safety",
-    body: "Confirm-before-close and active-session recovery settings will be added with the PTY backend.",
+    body: "Confirm-before-close and active-session recovery settings will be added after the PTY MVP.",
   },
   {
     title: "Privacy/local-first",
@@ -51,7 +51,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <div className="flex h-16 items-center justify-between border-b border-border px-5">
         <div>
           <div className="text-sm font-semibold text-slate-950">Settings</div>
-          <div className="text-xs text-slate-500">Phase 2 placeholders</div>
+          <div className="text-xs text-slate-500">Phase 3 placeholders</div>
         </div>
         <Button aria-label="Close settings" onClick={onClose} size="icon" variant="ghost">
           <X className="h-4 w-4" aria-hidden />

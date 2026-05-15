@@ -9,23 +9,30 @@ export type XTermSurfaceHandle = {
   clear: () => void;
   focus: () => void;
   fit: () => void;
+  getDimensions: () => { cols: number; rows: number };
 };
 
 type XTermSurfaceProps = {
   onData?: (data: string) => void;
   onReady?: () => void;
+  onResize?: (dimensions: { cols: number; rows: number }) => void;
 };
 
 export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
-  function XTermSurface({ onData, onReady }, ref) {
+  function XTermSurface({ onData, onReady, onResize }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const terminalRef = useRef<Terminal>();
     const fitAddonRef = useRef<FitAddon>();
     const onDataRef = useRef(onData);
+    const onResizeRef = useRef(onResize);
 
     useEffect(() => {
       onDataRef.current = onData;
     }, [onData]);
+
+    useEffect(() => {
+      onResizeRef.current = onResize;
+    }, [onResize]);
 
     useImperativeHandle(
       ref,
@@ -41,6 +48,10 @@ export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
             // Fit can fail while the element is detached; the next resize will retry.
           }
         },
+        getDimensions: () => ({
+          cols: terminalRef.current?.cols ?? 80,
+          rows: terminalRef.current?.rows ?? 24,
+        }),
       }),
       [],
     );
@@ -90,6 +101,7 @@ export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
       terminal.loadAddon(fitAddon);
       terminal.open(containerRef.current);
       terminal.onData((data) => onDataRef.current?.(data));
+      terminal.onResize(({ cols, rows }) => onResizeRef.current?.({ cols, rows }));
       terminalRef.current = terminal;
       fitAddonRef.current = fitAddon;
 

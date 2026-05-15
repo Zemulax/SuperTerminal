@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { TerminalSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TerminalStatusBar } from "@/components/terminal/TerminalStatusBar";
@@ -10,6 +11,7 @@ import {
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
+import type { PtyErrorEvent, PtyExitEvent, PtyOutputEvent } from "@/lib/types";
 
 const CRLF = "\r\n";
 
@@ -20,6 +22,7 @@ function sanitizeInput(input: string) {
 export function TerminalShell() {
   const terminalRef = useRef<XTermSurfaceHandle>(null);
   const activationTimerRef = useRef<number>();
+  const resizeTimerRef = useRef<number>();
   const lastToolIdRef = useRef<string>();
   const lastProjectIdRef = useRef<string>();
 
@@ -28,10 +31,20 @@ export function TerminalShell() {
   const activeToolId = useToolStore((state) => state.activeToolId);
   const activeTool = tools.find((tool) => tool.id === activeToolId) ?? tools[0];
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
+  const mode = useSessionStore((state) => state.mode);
+  const activeSessionId = useSessionStore((state) => state.activeSessionId);
+  const shell = useSessionStore((state) => state.shell);
+  const cols = useSessionStore((state) => state.cols);
+  const rows = useSessionStore((state) => state.rows);
   const inputBuffer = useSessionStore((state) => state.inputBuffer);
+  const startPtySession = useSessionStore((state) => state.startPtySession);
+  const writePtyInput = useSessionStore((state) => state.writePtyInput);
+  const resizePtySession = useSessionStore((state) => state.resizePtySession);
+  const stopPtySession = useSessionStore((state) => state.stopPtySession);
   const startDemoSession = useSessionStore((state) => state.startDemoSession);
   const stopDemoSession = useSessionStore((state) => state.stopDemoSession);
   const setStatus = useSessionStore((state) => state.setStatus);
+  const setError = useSessionStore((state) => state.setError);
   const appendTranscript = useSessionStore((state) => state.appendTranscript);
   const clearTranscript = useSessionStore((state) => state.clearTranscript);
   const setInputBuffer = useSessionStore((state) => state.setInputBuffer);
@@ -48,7 +61,36 @@ export function TerminalShell() {
     [appendTranscript],
   );
 
-  const handleStart = useCallback(() => {
+  const handleStart = useCallback(async () => {
+    if (!selectedProject || sessionStatus === "starting" || sessionStatus === "active") {
+      return;
+    }
+
+    const dimensions = terminalRef.current?.getDimensions() ?? { cols: 80, rows: 24 };
+
+    terminalRef.current?.clear();
+    clearTranscript();
+    setInputBuffer("");
+    writeLine(`Starting local PTY session in ${selectedProject.path}...`);
+    writeLine("SuperTerminal will not inject commands. You control this shell.");
+    writeLine("");
+
+    try {
+      await startPtySession(selectedProject.path, dimensions.cols, dimensions.rows);
+      terminalRef.current?.focus();
+    } catch (error) {
+      writeLine(`Failed to start PTY session: ${String(error)}`);
+    }
+  }, [
+    clearTranscript,
+    selectedProject,
+    sessionStatus,
+    setInputBuffer,
+    startPtySession,
+    writeLine,
+  ]);
+
+  const handleStartDemo = useCallback(() => {
     if (!selectedProject || sessionStatus === "starting" || sessionStatus === "active") {
       return;
     }
@@ -67,7 +109,7 @@ export function TerminalShell() {
     writeLine(`Path: ${selectedProject.path}`);
     writeLine("");
     writeLine("This is a frontend-only terminal shell.");
-    writeLine("Real PTY execution will be added in Phase 3.");
+    writeLine("Real PTY mode is available from Start Terminal.");
     writeLine("");
 
     activationTimerRef.current = window.setTimeout(() => {
@@ -88,35 +130,44 @@ export function TerminalShell() {
     writePrompt,
   ]);
 
-  const handleStop = useCallback(() => {
+  const handleStop = useCallback(async () => {
     if (activationTimerRef.current) {
       window.clearTimeout(activationTimerRef.current);
       activationTimerRef.current = undefined;
     }
 
+    if (mode === "pty") {
+      try {
+        await stopPtySession();
+      } catch (error) {
+        writeLine(`Failed to stop PTY session: ${String(error)}`);
+      }
+      return;
+    }
+
     stopDemoSession();
     writeLine("");
     writeLine("Session stopped.");
-  }, [stopDemoSession, writeLine]);
+  }, [mode, stopDemoSession, stopPtySession, writeLine]);
 
   const handleClear = useCallback(() => {
     terminalRef.current?.clear();
     clearTranscript();
     setInputBuffer("");
 
-    if (sessionStatus === "active") {
+    if (mode === "demo" && sessionStatus === "active") {
       writePrompt();
     }
-  }, [clearTranscript, sessionStatus, setInputBuffer, writePrompt]);
+  }, [clearTranscript, mode, sessionStatus, setInputBuffer, writePrompt]);
 
   const handleFocus = useCallback(() => {
     terminalRef.current?.focus();
   }, []);
 
   const handleReady = useCallback(() => {
-    terminalRef.current?.writeln("SuperTerminal terminal shell ready.");
-    terminalRef.current?.writeln("Open a project and start a demo session.");
-    terminalRef.current?.writeln("No commands execute in Phase 2.");
+    terminalRef.current?.writeln("SuperTerminal PTY host ready.");
+    terminalRef.current?.writeln("Open a project and click Start Terminal.");
+    terminalRef.current?.writeln("A real local shell starts only after your click.");
     terminalRef.current?.writeln("");
   }, []);
 
@@ -126,11 +177,16 @@ export function TerminalShell() {
         return;
       }
 
+      if (mode === "pty") {
+        void writePtyInput(data);
+        return;
+      }
+
       if (data === "\r") {
         const command = sanitizeInput(inputBuffer);
         terminalRef.current?.write(CRLF);
         writeLine(`Command captured locally: ${command || "(empty)"}`);
-        writeLine("No execution happened. PTY backend is not connected yet.");
+        writeLine("No execution happened. Demo mode is frontend-only.");
         writeLine("");
         setInputBuffer("");
         writePrompt();
@@ -153,13 +209,99 @@ export function TerminalShell() {
         }
       }
     },
-    [inputBuffer, sessionStatus, setInputBuffer, writeLine, writePrompt],
+    [
+      inputBuffer,
+      mode,
+      sessionStatus,
+      setInputBuffer,
+      writeLine,
+      writePrompt,
+      writePtyInput,
+    ],
+  );
+
+  const handleResize = useCallback(
+    (dimensions: { cols: number; rows: number }) => {
+      if (resizeTimerRef.current) {
+        window.clearTimeout(resizeTimerRef.current);
+      }
+
+      resizeTimerRef.current = window.setTimeout(() => {
+        void resizePtySession(dimensions.cols, dimensions.rows);
+      }, 120);
+    },
+    [resizePtySession],
   );
 
   useEffect(() => {
+    let cancelled = false;
+    const unlisteners: Array<() => void> = [];
+
+    async function subscribe() {
+      try {
+        const outputUnlisten = await listen<PtyOutputEvent>(
+          "pty://output",
+          (event) => {
+            const state = useSessionStore.getState();
+            if (
+              state.mode === "pty" &&
+              state.ptySession?.id === event.payload.sessionId
+            ) {
+              terminalRef.current?.write(event.payload.data);
+              state.applyPtyOutput(event.payload.data);
+            }
+          },
+        );
+        const exitUnlisten = await listen<PtyExitEvent>("pty://exit", (event) => {
+          const state = useSessionStore.getState();
+          if (state.ptySession?.id === event.payload.sessionId) {
+            terminalRef.current?.write(CRLF);
+            terminalRef.current?.write(
+              event.payload.status === "stopped"
+                ? `Session stopped by SuperTerminal.${CRLF}`
+                : `Session exited.${CRLF}`,
+            );
+            state.handlePtyExit(event.payload.status, event.payload.exitCode);
+          }
+        });
+        const errorUnlisten = await listen<PtyErrorEvent>(
+          "pty://error",
+          (event) => {
+            const state = useSessionStore.getState();
+            if (state.ptySession?.id === event.payload.sessionId) {
+              terminalRef.current?.write(
+                `${CRLF}PTY error: ${event.payload.message}${CRLF}`,
+              );
+              state.setError(event.payload.message);
+            }
+          },
+        );
+
+        if (cancelled) {
+          outputUnlisten();
+          exitUnlisten();
+          errorUnlisten();
+          return;
+        }
+
+        unlisteners.push(outputUnlisten, exitUnlisten, errorUnlisten);
+      } catch {
+        terminalRef.current?.writeln(
+          "Tauri event bridge is unavailable in this preview surface.",
+        );
+      }
+    }
+
+    void subscribe();
+
     return () => {
+      cancelled = true;
+      unlisteners.forEach((unlisten) => unlisten());
       if (activationTimerRef.current) {
         window.clearTimeout(activationTimerRef.current);
+      }
+      if (resizeTimerRef.current) {
+        window.clearTimeout(resizeTimerRef.current);
       }
     };
   }, []);
@@ -167,16 +309,14 @@ export function TerminalShell() {
   useEffect(() => {
     if (lastToolIdRef.current && lastToolIdRef.current !== activeTool.id) {
       writeLine("");
-      writeLine(
-        `Switched active tool to ${activeTool.name}. Existing demo session is frontend-only.`,
-      );
-      if (sessionStatus === "active") {
+      writeLine(`Switched active tool to ${activeTool.name}.`);
+      if (mode === "demo" && sessionStatus === "active") {
         writePrompt();
       }
     }
 
     lastToolIdRef.current = activeTool.id;
-  }, [activeTool.id, activeTool.name, sessionStatus, writeLine, writePrompt]);
+  }, [activeTool.id, activeTool.name, mode, sessionStatus, writeLine, writePrompt]);
 
   useEffect(() => {
     if (
@@ -186,13 +326,13 @@ export function TerminalShell() {
     ) {
       writeLine("");
       writeLine(`Project changed to ${selectedProject.name}.`);
-      if (sessionStatus === "active") {
+      if (mode === "demo" && sessionStatus === "active") {
         writePrompt();
       }
     }
 
     lastProjectIdRef.current = selectedProject?.id;
-  }, [selectedProject, sessionStatus, writeLine, writePrompt]);
+  }, [mode, selectedProject, sessionStatus, writeLine, writePrompt]);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-white">
@@ -205,7 +345,7 @@ export function TerminalShell() {
             </h1>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Demo frontend terminal shell. PTY backend is not connected yet.
+            Real local PTY host. Shells start only after explicit user action.
           </p>
         </div>
       </div>
@@ -214,11 +354,14 @@ export function TerminalShell() {
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-shell">
           <TerminalToolbar
             activeTool={activeTool}
+            mode={mode}
             onClear={handleClear}
             onFocus={handleFocus}
             onStart={handleStart}
+            onStartDemo={handleStartDemo}
             onStop={handleStop}
             project={selectedProject}
+            shell={shell}
             status={sessionStatus}
           />
 
@@ -227,6 +370,7 @@ export function TerminalShell() {
               <XTermSurface
                 onData={handleData}
                 onReady={handleReady}
+                onResize={handleResize}
                 ref={terminalRef}
               />
             </div>
@@ -234,11 +378,11 @@ export function TerminalShell() {
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-[#0b1019] px-8 text-center">
               <TerminalSquare className="h-10 w-10 text-slate-600" aria-hidden />
               <div className="mt-4 text-lg font-semibold text-white">
-                Open a project folder to start a SuperTerminal session.
+                Open a project folder before starting a terminal session.
               </div>
               <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-                The terminal shell is ready, but demo sessions need local project
-                context. No commands execute in this phase.
+                The PTY host needs a local working directory. SuperTerminal will
+                not start a shell on launch.
               </p>
               <Button className="mt-5" disabled variant="secondary">
                 Start disabled until project is open
@@ -246,7 +390,16 @@ export function TerminalShell() {
             </div>
           )}
 
-          <TerminalStatusBar activeTool={activeTool} project={selectedProject} />
+          <TerminalStatusBar
+            activeTool={activeTool}
+            cols={cols}
+            mode={mode}
+            project={selectedProject}
+            rows={rows}
+            sessionId={activeSessionId}
+            shell={shell}
+            status={sessionStatus}
+          />
         </div>
       </div>
     </section>
