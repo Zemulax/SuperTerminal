@@ -15,6 +15,7 @@ type TerminalStatusBarProps = {
   activeRunningToolName?: string;
   cols: number;
   rows: number;
+  transcriptCaptureEnabled: boolean;
 };
 
 export function TerminalStatusBar({
@@ -27,6 +28,7 @@ export function TerminalStatusBar({
   activeRunningToolName,
   cols,
   rows,
+  transcriptCaptureEnabled,
 }: TerminalStatusBarProps) {
   const shortSessionId = sessionId ? sessionId.slice(0, 12) : "no session";
 
@@ -49,6 +51,8 @@ export function TerminalStatusBar({
         </span>
         <span>|</span>
         <span>{mode === "pty" ? "Input forwarded to local shell" : "Input captured locally"}</span>
+        <span>|</span>
+        <span>{transcriptCaptureEnabled ? "transcript on" : "transcript off"}</span>
       </div>
     </div>
   );

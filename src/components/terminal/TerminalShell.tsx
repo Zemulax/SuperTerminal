@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { TerminalSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ContextInjectionPanel } from "@/components/context/ContextInjectionPanel";
+import { SessionHistoryPanel } from "@/components/history/SessionHistoryPanel";
 import { TerminalStatusBar } from "@/components/terminal/TerminalStatusBar";
 import { TerminalToolbar } from "@/components/terminal/TerminalToolbar";
 import { LaunchProfileEditor } from "@/components/tools/LaunchProfileEditor";
@@ -12,6 +13,7 @@ import {
 } from "@/components/terminal/XTermSurface";
 import { useProjectStore } from "@/stores/projectStore";
 import { useContextStore } from "@/stores/contextStore";
+import { useHistoryStore } from "@/stores/historyStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
 import type {
@@ -35,6 +37,7 @@ export function TerminalShell() {
   const lastProjectIdRef = useRef<string>();
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
+  const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [launchConfirmOpen, setLaunchConfirmOpen] = useState(false);
   const [pendingLaunchSpec, setPendingLaunchSpec] = useState<ToolLaunchSpec>();
 
@@ -66,6 +69,7 @@ export function TerminalShell() {
   const appendTranscript = useSessionStore((state) => state.appendTranscript);
   const clearTranscript = useSessionStore((state) => state.clearTranscript);
   const setInputBuffer = useSessionStore((state) => state.setInputBuffer);
+  const historySettings = useHistoryStore((state) => state.settings);
 
   const writePrompt = useCallback(() => {
     terminalRef.current?.write(`${activeTool.resolvedCommand}> `);
@@ -128,6 +132,8 @@ export function TerminalShell() {
         spec.name,
         spec.adapterId,
         spec.name,
+        selectedProject.name,
+        selectedProject.path,
       );
 
       await new Promise((resolve) => window.setTimeout(resolve, delayMs));
@@ -170,6 +176,10 @@ export function TerminalShell() {
         undefined,
         [],
         "Shell",
+        undefined,
+        undefined,
+        selectedProject.name,
+        selectedProject.path,
       );
       terminalRef.current?.focus();
     } catch (error) {
@@ -211,6 +221,8 @@ export function TerminalShell() {
           spec.name,
           spec.adapterId,
           spec.name,
+          selectedProject?.name,
+          selectedProject?.path,
         );
         terminalRef.current?.focus();
       } catch (error) {
@@ -554,6 +566,7 @@ export function TerminalShell() {
             onFocus={handleFocus}
             onLaunchTool={handleLaunchTool}
             onOpenContext={() => setContextPanelOpen(true)}
+            onOpenHistory={() => setHistoryPanelOpen(true)}
             onStart={handleStart}
             onStartDemo={handleStartDemo}
             onStop={handleStop}
@@ -596,6 +609,7 @@ export function TerminalShell() {
             sessionId={activeSessionId}
             shell={shell}
             status={sessionStatus}
+            transcriptCaptureEnabled={historySettings.captureTranscript}
           />
         </div>
       </div>
@@ -604,6 +618,11 @@ export function TerminalShell() {
         onClose={() => setContextPanelOpen(false)}
         onLaunchAndInject={handleLaunchAndInjectContext}
         open={contextPanelOpen}
+      />
+
+      <SessionHistoryPanel
+        onClose={() => setHistoryPanelOpen(false)}
+        open={historyPanelOpen}
       />
 
       {profileEditorOpen ? (

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { buildContextPayload } from "@/lib/context/contextBuilder";
+import { useHistoryStore } from "@/stores/historyStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
@@ -76,6 +77,7 @@ function historyRecord(
 }
 
 function addHistory(record: ContextInjectionRecord) {
+  useHistoryStore.getState().saveContextInjectionRecord(record);
   useContextStore.setState((state) => ({
     injectionHistory: [record, ...state.injectionHistory].slice(0, 20),
   }));

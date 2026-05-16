@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useHistoryStore } from "@/stores/historyStore";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useInstallStore } from "@/stores/installStore";
 import { useToolStore } from "@/stores/toolStore";
@@ -47,6 +48,9 @@ const sections = [
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const tools = useToolStore((state) => state.tools);
   const installHistory = useInstallStore((state) => state.installHistory);
+  const historySettings = useHistoryStore((state) => state.settings);
+  const updateHistorySettings = useHistoryStore((state) => state.updateSettings);
+  const clearHistory = useHistoryStore((state) => state.clearHistory);
 
   if (!open) {
     return null;
@@ -74,6 +78,61 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <p className="mt-1 text-sm leading-5 text-slate-500">{section.body}</p>
             </section>
           ))}
+        </div>
+
+        <div className="mt-6">
+          <h2 className="text-sm font-semibold text-slate-950">
+            Session history and transcripts
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-slate-500">
+            Session metadata is local to this app session. Transcript preview
+            capture is off by default because terminal output can contain secrets.
+          </p>
+          <div className="mt-3 rounded-md border border-border bg-slate-50 p-3">
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                checked={historySettings.saveSessionHistory}
+                className="mt-1"
+                onChange={(event) =>
+                  updateHistorySettings({
+                    saveSessionHistory: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Save session history while the app is running</span>
+            </label>
+            <label className="mt-3 flex items-start gap-2 text-sm text-slate-700">
+              <input
+                checked={historySettings.captureTranscript}
+                className="mt-1"
+                onChange={(event) =>
+                  updateHistorySettings({
+                    captureTranscript: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              <span>Capture bounded transcript previews locally</span>
+            </label>
+            <label className="mt-3 block text-xs font-medium text-slate-600">
+              Transcript max characters
+              <input
+                className="mt-1 h-8 w-full rounded-md border border-border px-2 font-mono text-xs"
+                min={1000}
+                onChange={(event) =>
+                  updateHistorySettings({
+                    transcriptMaxChars: Number(event.target.value),
+                  })
+                }
+                type="number"
+                value={historySettings.transcriptMaxChars}
+              />
+            </label>
+            <Button className="mt-3" onClick={() => clearHistory()} size="sm">
+              Clear all session history
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6">

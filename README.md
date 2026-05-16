@@ -2,7 +2,7 @@
 
 SuperTerminal is a local-first desktop shell for working with AI coding CLI tools from one focused interface.
 
-Phase 7 adds explicit, local context injection. SuperTerminal can build a markdown context payload, let you preview it, and then copy it, write it to a prompt file, inject it into an active PTY session, or launch a ready tool and inject after confirmation. It still does not bundle CLIs, manage credentials, silently inject prompts, or upload project code.
+Phase 8 adds local session history and optional bounded transcript previews. SuperTerminal records shell/tool session metadata, links context injections to active sessions, and lets you inspect or clear recent history during the running app session. It still does not bundle CLIs, manage credentials, silently inject prompts, or upload project code.
 
 ## What Is Included
 
@@ -21,6 +21,9 @@ Phase 7 adds explicit, local context injection. SuperTerminal can build a markdo
 - Captured install output and in-session install history
 - Context payload builder with preview, options, character count, and history
 - Clipboard, prompt-file, stdin, and launch-and-inject context modes
+- In-memory session history for local shell/tool sessions
+- Optional bounded transcript preview capture, off by default
+- Context injection records linked to terminal sessions where possible
 - Demo project fallback
 - Real local project folder scanning
 - Expandable file explorer
@@ -139,6 +142,22 @@ Supported modes:
 - `Launch Tool + Inject`: launch the selected ready tool, wait briefly, then inject context after confirmation.
 
 Large payload warnings appear above 20,000 characters. Prompt file mode is recommended for very large payloads.
+
+## Session History And Transcripts
+
+Use `History` in the terminal toolbar to inspect recent shell and tool sessions. SuperTerminal records session metadata such as kind, command, args, working directory, project path, status, timestamps, exit code, launch preview, and linked context injection records.
+
+Session history is currently in-memory for the running app session. SQLite persistence is intentionally left for a later phase.
+
+Transcript capture is privacy-first:
+
+- session history is on by default
+- transcript preview capture is off by default
+- transcript previews are capped at 50,000 characters by default
+- transcript data is local-only and never uploaded
+- individual sessions and all history can be cleared from the History panel
+
+Enable `Capture bounded transcript previews` in History or Settings before starting a session if you want terminal output saved into the session detail view. The setting applies to new sessions only.
 
 ## Guided Installation
 

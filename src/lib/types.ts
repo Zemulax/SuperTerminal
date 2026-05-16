@@ -167,6 +167,39 @@ export type ContextInjectionRecord = {
   createdAt: string;
 };
 
+export type TerminalSessionKind =
+  | "shell"
+  | "tool"
+  | "install"
+  | "context_injection";
+
+export type TerminalSessionRecord = {
+  id: string;
+  kind: TerminalSessionKind;
+  projectName?: string;
+  projectPath?: string;
+  workingDirectory: string;
+  toolId?: string;
+  toolName?: string;
+  command: string;
+  args: string[];
+  launchPreview: string;
+  status: Exclude<TerminalSessionStatus, "idle">;
+  startedAt: string;
+  endedAt?: string;
+  exitCode?: number;
+  transcriptCaptured: boolean;
+  transcriptPreview?: string;
+  transcriptCharCount?: number;
+  contextInjectionIds?: string[];
+};
+
+export type HistorySettings = {
+  saveSessionHistory: boolean;
+  captureTranscript: boolean;
+  transcriptMaxChars: number;
+};
+
 export type ProjectFileNode = {
   name: string;
   path: string;

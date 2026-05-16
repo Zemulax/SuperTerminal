@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { useHistoryStore } from "@/stores/historyStore";
 import type {
   PtySessionRecord,
   TerminalMode,
@@ -32,6 +33,8 @@ type SessionState = {
     sessionLabel?: string,
     toolId?: string,
     toolName?: string,
+    projectName?: string,
+    projectRootPath?: string,
   ) => Promise<PtySessionRecord | undefined>;
   writePtyInput: (data: string) => Promise<void>;
   resizePtySession: (cols: number, rows: number) => Promise<void>;
@@ -75,6 +78,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     sessionLabel,
     toolId,
     toolName,
+    projectName,
+    projectRootPath,
   ) => {
     if (get().sessionStatus === "starting" || get().sessionStatus === "active") {
       const message = "A terminal session is already active.";
@@ -103,13 +108,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           sessionLabel,
         },
       });
+      const launchCommand = command ?? session.shell;
+      useHistoryStore.getState().createSessionRecord({
+        id: session.id,
+        kind: toolId ? "tool" : "shell",
+        projectName,
+        projectPath: projectRootPath ?? projectPath,
+        workingDirectory: session.projectPath,
+        toolId,
+        toolName: toolName ?? session.label ?? sessionLabel,
+        command: launchCommand,
+        args,
+        launchPreview: `cd ${session.projectPath}\n${[launchCommand, ...args]
+          .filter(Boolean)
+          .join(" ")}`,
+        status: "active",
+        startedAt: session.startedAt,
+        transcriptCaptured: useHistoryStore.getState().settings.captureTranscript,
+      });
       set({
         ptySession: session,
         activeSessionId: session.id,
         activeToolSessionId: session.id,
         activeToolId: toolId,
         activeToolName: toolName ?? session.label ?? sessionLabel,
-        activeLaunchCommand: command ?? session.shell,
+        activeLaunchCommand: launchCommand,
         activeSession: {
           id: session.id,
           toolId,
@@ -198,6 +221,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const session = await invoke<PtySessionRecord>("stop_pty_session", {
         sessionId,
       });
+      useHistoryStore.getState().updateSessionRecord({
+        id: session.id,
+        status: "stopped",
+        endedAt: session.endedAt ?? new Date().toISOString(),
+        exitCode: session.exitCode,
+      });
       set({
         ptySession: session,
         activeSession: {
@@ -221,8 +250,25 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       throw error;
     }
   },
-  applyPtyOutput: (line) => get().appendTranscript(line),
-  handlePtyExit: (status, exitCode) =>
+  applyPtyOutput: (line) => {
+    const sessionId = get().activeSessionId;
+    get().appendTranscript(line);
+    if (sessionId) {
+      useHistoryStore.getState().appendTranscript(sessionId, line);
+    }
+  },
+  handlePtyExit: (status, exitCode) => {
+    const endedAt = new Date().toISOString();
+    const sessionId = get().ptySession?.id;
+    if (sessionId && status !== "idle" && status !== "starting" && status !== "active") {
+      useHistoryStore.getState().updateSessionRecord({
+        id: sessionId,
+        status,
+        endedAt,
+        exitCode,
+      });
+    }
+
     set((state) => ({
       sessionStatus: status,
       activeSessionId: undefined,
@@ -235,7 +281,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         ? {
             ...state.ptySession,
             status,
-            endedAt: new Date().toISOString(),
+            endedAt,
             exitCode,
           }
         : undefined,
@@ -243,10 +289,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         ? {
             ...state.activeSession,
             status,
-            endedAt: new Date().toISOString(),
+            endedAt,
           }
         : undefined,
-    })),
+    }));
+  },
   setStatus: (status) =>
     set((state) => ({
       sessionStatus: status,
