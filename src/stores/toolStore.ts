@@ -203,18 +203,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
   error: undefined,
   setActiveTool: (toolId) => set({ activeToolId: toolId }),
   getLaunchProfile: (adapterId) => {
+    const stored = get().launchProfilesByAdapterId[adapterId];
+    if (stored) {
+      return stored;
+    }
+
     const adapter = get().adapters.find(
       (candidate) => candidate.definition.id === adapterId,
     );
-    const stored = get().launchProfilesByAdapterId[adapterId];
-    const command = adapter?.resolvedCommand ?? stored?.command ?? "";
-
-    return {
-      ...defaultLaunchProfile(adapterId, command),
-      ...stored,
-      adapterId,
-      command,
-    };
+    return defaultLaunchProfile(adapterId, adapter?.resolvedCommand ?? "");
   },
   updateLaunchProfile: (adapterId, profilePatch) => {
     set((state) => {
@@ -370,8 +367,24 @@ export const useToolStore = create<ToolState>((set, get) => ({
           lastCheckedAt: undefined,
         };
       });
+      const updatedAdapter = adapters.find(
+        (adapter) => adapter.definition.id === adapterId,
+      );
+      const currentProfile = state.launchProfilesByAdapterId[adapterId];
+      const launchProfilesByAdapterId =
+        updatedAdapter && currentProfile
+          ? {
+              ...state.launchProfilesByAdapterId,
+              [adapterId]: {
+                ...currentProfile,
+                command: updatedAdapter.resolvedCommand,
+              },
+            }
+          : state.launchProfilesByAdapterId;
+
       saveConfigs(adapters);
-      return { adapters, tools: adapters };
+      saveLaunchProfiles(launchProfilesByAdapterId);
+      return { adapters, tools: adapters, launchProfilesByAdapterId };
     });
   },
   resetToolConfig: (adapterId) => {
