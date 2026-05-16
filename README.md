@@ -2,7 +2,7 @@
 
 SuperTerminal is a local-first desktop shell for working with AI coding CLI tools from one focused interface.
 
-Phase 6 adds per-tool launch profiles and clearer tool switching around one shared local PTY surface. SuperTerminal can launch configured tools with tool-specific args and working-directory behavior, but it still does not bundle CLIs, manage credentials, inject prompts, or upload project code.
+Phase 7 adds explicit, local context injection. SuperTerminal can build a markdown context payload, let you preview it, and then copy it, write it to a prompt file, inject it into an active PTY session, or launch a ready tool and inject after confirmation. It still does not bundle CLIs, manage credentials, silently inject prompts, or upload project code.
 
 ## What Is Included
 
@@ -19,6 +19,8 @@ Phase 6 adds per-tool launch profiles and clearer tool switching around one shar
 - Direct launch of ready adapters through the local PTY host
 - Guided install command validation and confirmation
 - Captured install output and in-session install history
+- Context payload builder with preview, options, character count, and history
+- Clipboard, prompt-file, stdin, and launch-and-inject context modes
 - Demo project fallback
 - Real local project folder scanning
 - Expandable file explorer
@@ -28,7 +30,7 @@ Phase 6 adds per-tool launch profiles and clearer tool switching around one shar
 - Frontend-only demo terminal sessions
 - Session/status panel
 - Settings panel with adapter, install, and launch profile configuration
-- Rust/Tauri filesystem commands for project scanning and file preview
+- Rust/Tauri filesystem commands for project scanning, file preview, and context prompt files
 
 ## Prerequisites
 
@@ -122,6 +124,22 @@ Use `Edit Profile` in the terminal toolbar or the Launch Profile section on each
 
 Only one PTY session can run at a time. If you switch tools while a shell or tool is active, SuperTerminal keeps the current session running, shows which tool is active, and blocks launching another tool until you stop the session.
 
+## Context Injection
+
+Use `Context` in the terminal toolbar to open the Context Injection panel.
+
+The context payload is generated locally as markdown. By default it includes project summary, compact file tree, selected file metadata, user task, selected tool information, and default instructions. Selected file preview is off by default. Env files such as `.env` are never included.
+
+Supported modes:
+
+- `Manual preview`: generate and inspect the context only.
+- `Clipboard`: copy the generated context to the system clipboard.
+- `Prompt file`: write the context to a UTF-8 markdown file outside the project under the system temp folder.
+- `Stdin`: inject the context into the active PTY session after confirmation.
+- `Launch Tool + Inject`: launch the selected ready tool, wait briefly, then inject context after confirmation.
+
+Large payload warnings appear above 20,000 characters. Prompt file mode is recommended for very large payloads.
+
 ## Guided Installation
 
 If an adapter is missing, Settings shows its install command preview and setup controls. SuperTerminal does not bundle or redistribute tools; it only runs the command shown after explicit confirmation.
@@ -158,4 +176,4 @@ npm.cmd run tauri:build
 
 ## Current Boundaries
 
-SuperTerminal does not bundle or replace Codex CLI, Claude CLI, OpenCode, OpenClaude, Grok CLI, or any other third-party CLI. Future phases may add project context injection, stronger adapter launch templates, and transcript capture.
+SuperTerminal does not bundle or replace Codex CLI, Claude CLI, OpenCode, OpenClaude, Grok CLI, or any other third-party CLI. Future phases may add context templates, transcript capture, and tool-specific context adapters.

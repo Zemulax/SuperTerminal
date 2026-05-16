@@ -115,6 +115,58 @@ export type InstallAttemptResult = {
   message: string;
 };
 
+export type ContextInjectionMode =
+  | "manual"
+  | "clipboard"
+  | "prompt_file"
+  | "stdin";
+
+export type ContextInjectionStatus =
+  | "prepared"
+  | "copied"
+  | "file_created"
+  | "injected"
+  | "failed";
+
+export type ContextOptions = {
+  includeProjectSummary: boolean;
+  includeFileTreeSummary: boolean;
+  includeSelectedFileMetadata: boolean;
+  includeSelectedFilePreview: boolean;
+  includeUserTask: boolean;
+  includeToolInformation: boolean;
+  includeDefaultInstructions: boolean;
+};
+
+export type ContextPayloadInput = {
+  project?: Project;
+  selectedFile?: ProjectFileNode;
+  filePreview?: TextFilePreview;
+  previewError?: string;
+  tool?: ToolAdapterState;
+  userTask: string;
+  options: ContextOptions;
+};
+
+export type ContextPromptFileRecord = {
+  path: string;
+  sizeBytes: number;
+  createdAt: string;
+};
+
+export type ContextInjectionRecord = {
+  id: string;
+  toolId: string;
+  toolName: string;
+  mode: ContextInjectionMode | "launch_and_inject";
+  status: ContextInjectionStatus;
+  characterCount: number;
+  promptFilePath?: string;
+  sessionId?: string;
+  message: string;
+  createdAt: string;
+};
+
 export type ProjectFileNode = {
   name: string;
   path: string;

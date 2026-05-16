@@ -7,6 +7,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::app::get_app_version,
             commands::app::get_home_directory,
+            commands::context::create_context_prompt_file,
             commands::project::validate_project_path,
             commands::project::scan_project_folder,
             commands::project::open_project_folder,

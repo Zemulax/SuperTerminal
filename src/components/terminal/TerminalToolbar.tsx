@@ -2,6 +2,7 @@ import {
   Crosshair,
   Eraser,
   FlaskConical,
+  MessageSquareText,
   PlayCircle,
   Settings2,
   Square,
@@ -28,6 +29,7 @@ type TerminalToolbarProps = {
   onStart: () => void;
   onLaunchTool: () => void;
   onEditProfile: () => void;
+  onOpenContext: () => void;
   onStartDemo: () => void;
   onStop: () => void;
   onClear: () => void;
@@ -45,6 +47,7 @@ export function TerminalToolbar({
   onStart,
   onLaunchTool,
   onEditProfile,
+  onOpenContext,
   onStartDemo,
   onStop,
   onClear,
@@ -115,6 +118,10 @@ export function TerminalToolbar({
         <Button onClick={onEditProfile} size="sm" variant="secondary">
           <Settings2 className="h-4 w-4" aria-hidden />
           Edit Profile
+        </Button>
+        <Button onClick={onOpenContext} size="sm" variant="secondary">
+          <MessageSquareText className="h-4 w-4" aria-hidden />
+          Context
         </Button>
         <Button
           disabled={!canStart}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { TerminalSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ContextInjectionPanel } from "@/components/context/ContextInjectionPanel";
 import { TerminalStatusBar } from "@/components/terminal/TerminalStatusBar";
 import { TerminalToolbar } from "@/components/terminal/TerminalToolbar";
 import { LaunchProfileEditor } from "@/components/tools/LaunchProfileEditor";
@@ -10,6 +11,7 @@ import {
   type XTermSurfaceHandle,
 } from "@/components/terminal/XTermSurface";
 import { useProjectStore } from "@/stores/projectStore";
+import { useContextStore } from "@/stores/contextStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
 import type {
@@ -32,6 +34,7 @@ export function TerminalShell() {
   const lastToolIdRef = useRef<string>();
   const lastProjectIdRef = useRef<string>();
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const [launchConfirmOpen, setLaunchConfirmOpen] = useState(false);
   const [pendingLaunchSpec, setPendingLaunchSpec] = useState<ToolLaunchSpec>();
 
@@ -74,6 +77,75 @@ export function TerminalShell() {
       appendTranscript(line);
     },
     [appendTranscript],
+  );
+
+  const handleLaunchAndInjectContext = useCallback(
+    async (appendNewline: boolean, delayMs: number) => {
+      if (!selectedProject) {
+        throw new Error("Open a project folder before launch and inject.");
+      }
+
+      if (sessionStatus === "starting" || sessionStatus === "active") {
+        throw new Error("Stop the active session before launch and inject.");
+      }
+
+      if (activeTool.status !== "ready") {
+        throw new Error("Selected tool must be ready before launch and inject.");
+      }
+
+      const spec = await buildLaunchSpec(activeTool.definition.id, selectedProject.path);
+      if (!spec) {
+        throw new Error("Unable to build launch spec for selected tool.");
+      }
+
+      if (spec.launchMode === "manual") {
+        throw new Error("Launch and inject requires PTY launch mode.");
+      }
+
+      const context = useContextStore.getState().generatedContext;
+      if (!context) {
+        throw new Error("Generate context before launch and inject.");
+      }
+
+      const dimensions = terminalRef.current?.getDimensions() ?? {
+        cols: 80,
+        rows: 24,
+      };
+
+      terminalRef.current?.clear();
+      clearTranscript();
+      setInputBuffer("");
+      writeLine(`Launching ${spec.name} in ${spec.workingDirectory}...`);
+      writeLine(`Context will be injected after ${delayMs}ms.`);
+      writeLine("");
+
+      await startPtySession(
+        spec.workingDirectory,
+        dimensions.cols,
+        dimensions.rows,
+        spec.command,
+        spec.args,
+        spec.name,
+        spec.adapterId,
+        spec.name,
+      );
+
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+      await useSessionStore
+        .getState()
+        .writePtyInput(appendNewline ? `${context}\r` : context);
+    },
+    [
+      activeTool.definition.id,
+      activeTool.status,
+      buildLaunchSpec,
+      clearTranscript,
+      selectedProject,
+      sessionStatus,
+      setInputBuffer,
+      startPtySession,
+      writeLine,
+    ],
   );
 
   const handleStart = useCallback(async () => {
@@ -481,6 +553,7 @@ export function TerminalShell() {
             onEditProfile={() => setProfileEditorOpen(true)}
             onFocus={handleFocus}
             onLaunchTool={handleLaunchTool}
+            onOpenContext={() => setContextPanelOpen(true)}
             onStart={handleStart}
             onStartDemo={handleStartDemo}
             onStop={handleStop}
@@ -526,6 +599,12 @@ export function TerminalShell() {
           />
         </div>
       </div>
+
+      <ContextInjectionPanel
+        onClose={() => setContextPanelOpen(false)}
+        onLaunchAndInject={handleLaunchAndInjectContext}
+        open={contextPanelOpen}
+      />
 
       {profileEditorOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">

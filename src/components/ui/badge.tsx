@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cn, formatStatusLabel } from "@/lib/utils";
-import type { ToolStatus } from "@/lib/types";
+import type { ContextInjectionStatus, ToolStatus } from "@/lib/types";
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   status?:
@@ -10,7 +10,8 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
     | "stopped"
     | "exited"
     | "failed"
-    | "starting";
+    | "starting"
+    | ContextInjectionStatus;
 };
 
 const statusClasses: Record<string, string> = {
@@ -26,6 +27,10 @@ const statusClasses: Record<string, string> = {
   exited: "border-slate-200 bg-slate-50 text-slate-600",
   failed: "border-rose-200 bg-rose-50 text-rose-700",
   starting: "border-blue-200 bg-blue-50 text-blue-700",
+  prepared: "border-slate-200 bg-slate-50 text-slate-600",
+  copied: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  file_created: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  injected: "border-cyan-200 bg-cyan-50 text-cyan-700",
 };
 
 export function Badge({ className, status, children, ...props }: BadgeProps) {
