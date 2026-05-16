@@ -7,7 +7,7 @@ use crate::services::pty_service::{
 
 #[tauri::command]
 pub fn get_terminal_placeholder_status() -> Result<String, String> {
-    Ok("Phase 4: PTY execution and explicit adapter launch are available.".to_string())
+    Ok("Phase 6: PTY execution, adapter launch profiles, and guided install are available.".to_string())
 }
 
 #[tauri::command]

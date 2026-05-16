@@ -1,6 +1,7 @@
 import { ChevronDown, RefreshCw, TerminalSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
+import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,8 @@ export function ToolSwitcher() {
   const setActiveTool = useToolStore((state) => state.setActiveTool);
   const checkTool = useToolStore((state) => state.checkTool);
   const checkAllTools = useToolStore((state) => state.checkAllTools);
+  const runningToolId = useSessionStore((state) => state.activeToolId);
+  const sessionStatus = useSessionStore((state) => state.sessionStatus);
   const activeAdapter =
     adapters.find((adapter) => adapter.definition.id === activeToolId) ??
     adapters[0];
@@ -33,6 +36,18 @@ export function ToolSwitcher() {
           >
             <span>{adapter.definition.name}</span>
             <ToolStatusBadge status={adapter.status} />
+            {sessionStatus === "active" && runningToolId === adapter.definition.id ? (
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em]",
+                  activeToolId === adapter.definition.id
+                    ? "bg-emerald-400/20 text-emerald-100"
+                    : "bg-emerald-50 text-emerald-700",
+                )}
+              >
+                running
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

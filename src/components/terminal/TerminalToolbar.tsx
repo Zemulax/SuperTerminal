@@ -1,4 +1,11 @@
-import { Crosshair, Eraser, FlaskConical, PlayCircle, Square } from "lucide-react";
+import {
+  Crosshair,
+  Eraser,
+  FlaskConical,
+  PlayCircle,
+  Settings2,
+  Square,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
@@ -7,6 +14,7 @@ import type {
   TerminalMode,
   TerminalSessionStatus,
   ToolAdapterState,
+  ToolLaunchProfile,
 } from "@/lib/types";
 
 type TerminalToolbarProps = {
@@ -14,9 +22,12 @@ type TerminalToolbarProps = {
   project?: Project;
   status: TerminalSessionStatus;
   mode: TerminalMode;
-  shell?: string;
+  launchProfile: ToolLaunchProfile;
+  activeRunningToolId?: string;
+  activeRunningToolName?: string;
   onStart: () => void;
   onLaunchTool: () => void;
+  onEditProfile: () => void;
   onStartDemo: () => void;
   onStop: () => void;
   onClear: () => void;
@@ -28,9 +39,12 @@ export function TerminalToolbar({
   project,
   status,
   mode,
-  shell,
+  launchProfile,
+  activeRunningToolId,
+  activeRunningToolName,
   onStart,
   onLaunchTool,
+  onEditProfile,
   onStartDemo,
   onStop,
   onClear,
@@ -39,6 +53,12 @@ export function TerminalToolbar({
   const canStart = Boolean(project) && status !== "starting" && status !== "active";
   const canLaunchTool = canStart && activeTool.status === "ready";
   const canStop = status === "active" || status === "starting";
+  const selectedToolDiffers =
+    Boolean(activeRunningToolId) && activeRunningToolId !== activeTool.definition.id;
+  const launchTarget =
+    launchProfile.rawArgs.trim().length > 0
+      ? `${activeTool.resolvedCommand} ${launchProfile.rawArgs}`
+      : activeTool.resolvedCommand;
 
   return (
     <div className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-950 px-4">
@@ -51,14 +71,19 @@ export function TerminalToolbar({
             <ToolStatusBadge status={activeTool.status} />
             <Badge status={status} />
             <Badge>{mode === "pty" ? "Real PTY" : "Demo"}</Badge>
+            {activeRunningToolName ? <Badge>{activeRunningToolName} running</Badge> : null}
           </div>
           <div
             className="mt-1 truncate font-mono text-[11px] text-slate-400"
             title={project?.path}
           >
-            {project
-              ? `${project.name} | ${shell ?? "default shell"} | ${project.path}`
-              : "Open a project folder before starting a terminal session."}
+            {!project
+              ? "Open a project folder before starting a terminal session."
+              : status === "active" && selectedToolDiffers
+                ? `Active session: ${activeRunningToolName}. Selected tool: ${activeTool.definition.name}. Stop the session before launching another tool.`
+                : activeTool.status === "ready"
+                ? `${project.name} | ${launchTarget} | ${launchProfile.workingDirectoryMode}`
+                : `${activeTool.definition.name} is not ready. Install or configure it in Settings before launching.`}
           </div>
         </div>
       </div>
@@ -81,11 +106,15 @@ export function TerminalToolbar({
           title={
             activeTool.status === "ready"
               ? "Launch selected CLI in the local PTY"
-              : "Tool must be ready before launch"
+              : "Install or configure this tool in Settings before launch"
           }
           variant="secondary"
         >
           Launch Tool
+        </Button>
+        <Button onClick={onEditProfile} size="sm" variant="secondary">
+          <Settings2 className="h-4 w-4" aria-hidden />
+          Edit Profile
         </Button>
         <Button
           disabled={!canStart}

@@ -17,14 +17,21 @@ type SessionState = {
   transcriptPreview: string[];
   error?: string;
   shell?: string;
+  activeToolSessionId?: string;
+  activeToolId?: string;
+  activeToolName?: string;
+  activeLaunchCommand?: string;
   cols: number;
   rows: number;
   startPtySession: (
     projectPath: string,
     cols: number,
     rows: number,
-    shell?: string,
+    command?: string,
     args?: string[],
+    sessionLabel?: string,
+    toolId?: string,
+    toolName?: string,
   ) => Promise<PtySessionRecord | undefined>;
   writePtyInput: (data: string) => Promise<void>;
   resizePtySession: (cols: number, rows: number) => Promise<void>;
@@ -53,9 +60,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   transcriptPreview: [],
   error: undefined,
   shell: undefined,
+  activeToolSessionId: undefined,
+  activeToolId: undefined,
+  activeToolName: undefined,
+  activeLaunchCommand: undefined,
   cols: 80,
   rows: 24,
-  startPtySession: async (projectPath, cols, rows, shell, args = []) => {
+  startPtySession: async (
+    projectPath,
+    cols,
+    rows,
+    command,
+    args = [],
+    sessionLabel,
+    toolId,
+    toolName,
+  ) => {
     if (get().sessionStatus === "starting" || get().sessionStatus === "active") {
       const message = "A terminal session is already active.";
       set({ error: message });
@@ -75,17 +95,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const session = await invoke<PtySessionRecord>("start_pty_session", {
         request: {
           projectPath,
-          shell,
+          command,
+          shell: command,
           args,
           cols,
           rows,
+          sessionLabel,
         },
       });
       set({
         ptySession: session,
         activeSessionId: session.id,
+        activeToolSessionId: session.id,
+        activeToolId: toolId,
+        activeToolName: toolName ?? session.label ?? sessionLabel,
+        activeLaunchCommand: command ?? session.shell,
         activeSession: {
           id: session.id,
+          toolId,
           status: "active",
           startedAt: session.startedAt,
         },
@@ -100,6 +127,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({
         ptySession: undefined,
         activeSessionId: undefined,
+        activeToolSessionId: undefined,
+        activeToolId: undefined,
+        activeToolName: undefined,
+        activeLaunchCommand: undefined,
         activeSession: undefined,
         sessionStatus: "failed",
         error: String(error),
@@ -176,6 +207,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           endedAt: session.endedAt,
         },
         activeSessionId: undefined,
+        activeToolSessionId: undefined,
+        activeToolId: undefined,
+        activeToolName: undefined,
+        activeLaunchCommand: undefined,
         sessionStatus: "stopped",
         inputBuffer: "",
         error: undefined,
@@ -191,6 +226,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set((state) => ({
       sessionStatus: status,
       activeSessionId: undefined,
+      activeToolSessionId: undefined,
+      activeToolId: undefined,
+      activeToolName: undefined,
+      activeLaunchCommand: undefined,
       inputBuffer: "",
       ptySession: state.ptySession
         ? {
@@ -233,6 +272,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({
       mode: "demo",
       activeSessionId: sessionId,
+      activeToolSessionId: sessionId,
+      activeToolId: toolId,
+      activeToolName: toolId,
+      activeLaunchCommand: undefined,
       activeSession: {
         id: sessionId,
         projectId,
@@ -256,6 +299,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           }
         : undefined,
       activeSessionId: undefined,
+      activeToolSessionId: undefined,
+      activeToolId: undefined,
+      activeToolName: undefined,
+      activeLaunchCommand: undefined,
       sessionStatus: "stopped",
       inputBuffer: "",
     })),
@@ -277,6 +324,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       activeSession: undefined,
       ptySession: undefined,
       activeSessionId: undefined,
+      activeToolSessionId: undefined,
+      activeToolId: undefined,
+      activeToolName: undefined,
+      activeLaunchCommand: undefined,
       sessionStatus: "idle",
       mode: "pty",
       inputBuffer: "",

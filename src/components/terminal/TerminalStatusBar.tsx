@@ -12,6 +12,7 @@ type TerminalStatusBarProps = {
   status: TerminalSessionStatus;
   sessionId?: string;
   shell?: string;
+  activeRunningToolName?: string;
   cols: number;
   rows: number;
 };
@@ -23,6 +24,7 @@ export function TerminalStatusBar({
   status,
   sessionId,
   shell,
+  activeRunningToolName,
   cols,
   rows,
 }: TerminalStatusBarProps) {
@@ -40,7 +42,7 @@ export function TerminalStatusBar({
         {project?.path ?? "Open a project folder to enable terminal hosting"}
       </div>
       <div className="flex flex-wrap gap-2 text-slate-300">
-        <span>{shell ?? activeTool.resolvedCommand}</span>
+        <span>{activeRunningToolName ?? shell ?? activeTool.resolvedCommand}</span>
         <span>|</span>
         <span>
           {cols}x{rows}

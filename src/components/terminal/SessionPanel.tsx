@@ -9,6 +9,7 @@ export function SessionPanel() {
   const activeToolId = useToolStore((state) => state.activeToolId);
   const activeSession = useSessionStore((state) => state.activeSession);
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
+  const activeRunningToolName = useSessionStore((state) => state.activeToolName);
   const transcriptPreview = useSessionStore((state) => state.transcriptPreview);
   const activeTool =
     adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
@@ -33,7 +34,9 @@ export function SessionPanel() {
         </div>
         <div className="mt-2 text-sm text-slate-700">
           {selectedProject?.name ?? "No project"} {"->"}{" "}
-          {activeTool.definition.name}
+          {activeRunningToolName
+            ? `${activeRunningToolName} running`
+            : activeTool.definition.name}
         </div>
       </div>
 

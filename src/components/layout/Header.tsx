@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ToolSwitcher } from "@/components/tools/ToolSwitcher";
 import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
 import { useProjectStore } from "@/stores/projectStore";
+import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
 
 type HeaderProps = {
@@ -16,6 +17,8 @@ export function Header({ onOpenSettings }: HeaderProps) {
   const isOpeningProject = useProjectStore((state) => state.isOpeningProject);
   const adapters = useToolStore((state) => state.adapters);
   const activeToolId = useToolStore((state) => state.activeToolId);
+  const activeRunningToolName = useSessionStore((state) => state.activeToolName);
+  const sessionStatus = useSessionStore((state) => state.sessionStatus);
   const activeTool =
     adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
 
@@ -60,6 +63,18 @@ export function Header({ onOpenSettings }: HeaderProps) {
             {activeTool.definition.name}
           </span>
           <ToolStatusBadge status={activeTool.status} />
+          {sessionStatus === "active" && activeRunningToolName ? (
+            <Badge>{activeRunningToolName} running</Badge>
+          ) : null}
+          {activeTool.status === "missing" || activeTool.status === "needs_setup" ? (
+            <button
+              className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+              onClick={onOpenSettings}
+              type="button"
+            >
+              Install from Settings
+            </button>
+          ) : null}
         </div>
       </div>
 

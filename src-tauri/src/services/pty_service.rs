@@ -17,10 +17,12 @@ use crate::services::file_scanner;
 #[serde(rename_all = "camelCase")]
 pub struct StartPtySessionRequest {
     pub project_path: String,
+    pub command: Option<String>,
     pub shell: Option<String>,
     pub args: Option<Vec<String>>,
     pub cols: u16,
     pub rows: u16,
+    pub session_label: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -29,6 +31,7 @@ pub struct PtySessionRecord {
     pub id: String,
     pub project_path: String,
     pub shell: String,
+    pub label: Option<String>,
     pub status: String,
     pub cols: u16,
     pub rows: u16,
@@ -117,10 +120,15 @@ impl PtyState {
         let project_path = PathBuf::from(&request.project_path)
             .canonicalize()
             .map_err(|error| format!("Unable to resolve project path: {error}"))?;
-        let shell = request
-            .shell
+        let command_name = request
+            .command
+            .or(request.shell)
             .filter(|value| !value.trim().is_empty())
             .unwrap_or_else(default_shell);
+        let label = request
+            .session_label
+            .filter(|value| !value.trim().is_empty())
+            .or_else(|| Some(command_name.clone()));
         let cols = request.cols.max(20);
         let rows = request.rows.max(5);
         let session_id = format!("pty-{}", now_millis());
@@ -134,7 +142,7 @@ impl PtyState {
             })
             .map_err(|error| format!("Unable to open PTY: {error}"))?;
 
-        let mut command = CommandBuilder::new(&shell);
+        let mut command = CommandBuilder::new(&command_name);
         for arg in request.args.unwrap_or_default() {
             command.arg(arg);
         }
@@ -143,7 +151,7 @@ impl PtyState {
         let child = pair
             .slave
             .spawn_command(command)
-            .map_err(|error| format!("Unable to start shell '{shell}': {error}"))?;
+            .map_err(|error| format!("Unable to start command '{command_name}': {error}"))?;
         let mut reader = pair
             .master
             .try_clone_reader()
@@ -156,7 +164,8 @@ impl PtyState {
         let record = PtySessionRecord {
             id: session_id.clone(),
             project_path: path_to_string(&project_path),
-            shell: shell.clone(),
+            shell: command_name.clone(),
+            label,
             status: "active".to_string(),
             cols,
             rows,

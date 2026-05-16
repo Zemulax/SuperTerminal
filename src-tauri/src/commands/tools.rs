@@ -4,7 +4,7 @@ use crate::services::tool_detection::{
 
 #[tauri::command]
 pub fn get_mock_environment_status() -> Result<String, String> {
-    Ok("Phase 4: local tool detection is available.".to_string())
+    Ok("Phase 6: local tool detection, guided installation, and launch profiles are available.".to_string())
 }
 
 #[tauri::command]

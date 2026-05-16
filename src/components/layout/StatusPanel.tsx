@@ -9,7 +9,8 @@ import { formatBytes } from "@/lib/utils";
 const futureCapabilities = [
   "PTY session",
   "adapter detection",
-  "launch preview",
+  "guided install",
+  "launch profiles",
   "transcript capture",
 ];
 
@@ -20,6 +21,7 @@ export function StatusPanel() {
   const activeToolId = useToolStore((state) => state.activeToolId);
   const lastLaunchSpec = useToolStore((state) => state.lastLaunchSpec);
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
+  const activeRunningToolName = useSessionStore((state) => state.activeToolName);
   const activeTool =
     adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
 
@@ -77,12 +79,12 @@ export function StatusPanel() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             <ShieldCheck className="h-4 w-4" aria-hidden />
-            Phase 4 boundaries
+            Phase 6 boundaries
           </div>
           <p className="mt-2 text-sm leading-5 text-slate-600">
-            Tool checks run short local version commands. Install commands are
-            preview-only. No prompts, credentials, API keys, or project context
-            are injected in this phase.
+            Tool launches use per-adapter profiles and require explicit user
+            action. Only one PTY session runs at a time. No prompts,
+            credentials, API keys, or project context are injected.
           </p>
           {lastLaunchSpec ? (
             <pre className="mt-3 max-h-20 overflow-auto rounded-md border border-border bg-slate-50 px-3 py-2 font-mono text-[11px] text-slate-600">
@@ -101,6 +103,7 @@ export function StatusPanel() {
                 } dirs`
               : "Project path unavailable"}{" "}
             | {sessionStatus}
+            {activeRunningToolName ? ` | ${activeRunningToolName}` : ""}
           </div>
         </div>
       </div>

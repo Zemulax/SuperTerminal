@@ -6,20 +6,29 @@ import type {
   ToolAdapterId,
   ToolAdapterState,
   ToolCheckResult,
+  ToolLaunchProfile,
   ToolLaunchSpec,
   ToolStatus,
 } from "@/lib/types";
 
 const CONFIG_STORAGE_KEY = "superterminal.toolAdapterConfigs.v1";
+const LAUNCH_PROFILE_STORAGE_KEY = "superterminal.toolLaunchProfiles.v1";
 
 type ToolState = {
   adapters: ToolAdapterState[];
   tools: ToolAdapterState[];
   activeToolId: ToolAdapterId;
+  launchProfilesByAdapterId: Record<string, ToolLaunchProfile>;
   isCheckingAll: boolean;
   lastLaunchSpec?: ToolLaunchSpec;
   error?: string;
   setActiveTool: (toolId: ToolAdapterId) => void;
+  getLaunchProfile: (adapterId: ToolAdapterId) => ToolLaunchProfile;
+  updateLaunchProfile: (
+    adapterId: ToolAdapterId,
+    profile: Partial<ToolLaunchProfile>,
+  ) => void;
+  resetLaunchProfile: (adapterId: ToolAdapterId) => void;
   checkTool: (adapterId: ToolAdapterId) => Promise<void>;
   checkAllTools: () => Promise<void>;
   updateToolConfig: (
@@ -29,7 +38,7 @@ type ToolState = {
   resetToolConfig: (adapterId: ToolAdapterId) => void;
   buildLaunchSpec: (
     adapterId: ToolAdapterId,
-    workingDirectory: string,
+    projectPath?: string,
   ) => Promise<ToolLaunchSpec | undefined>;
   markToolStatus: (toolId: ToolAdapterId, status: ToolStatus) => void;
 };
@@ -48,6 +57,57 @@ function saveConfigs(adapters: ToolAdapterState[]) {
     adapters.map((adapter) => [adapter.definition.id, adapter.config]),
   );
   localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(configs));
+}
+
+function loadLaunchProfiles(): Record<string, ToolLaunchProfile> {
+  try {
+    const raw = localStorage.getItem(LAUNCH_PROFILE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLaunchProfiles(profiles: Record<string, ToolLaunchProfile>) {
+  localStorage.setItem(LAUNCH_PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+}
+
+function defaultLaunchProfile(
+  adapterId: ToolAdapterId,
+  command: string,
+): ToolLaunchProfile {
+  return {
+    adapterId,
+    command,
+    args: [],
+    rawArgs: "",
+    launchMode: "pty",
+    workingDirectoryMode: "project_root",
+    customWorkingDirectory: undefined,
+    confirmBeforeLaunch: true,
+  };
+}
+
+function initialLaunchProfiles(adapters: ToolAdapterState[]) {
+  const stored = loadLaunchProfiles();
+
+  return Object.fromEntries(
+    adapters.map((adapter) => {
+      const existing = stored[adapter.definition.id];
+      return [
+        adapter.definition.id,
+        {
+          ...defaultLaunchProfile(
+            adapter.definition.id,
+            adapter.resolvedCommand,
+          ),
+          ...existing,
+          adapterId: adapter.definition.id,
+          command: adapter.resolvedCommand,
+        },
+      ];
+    }),
+  );
 }
 
 function initialAdapters(): ToolAdapterState[] {
@@ -87,16 +147,119 @@ function mapCheckResult(result: ToolCheckResult): Pick<
   };
 }
 
+function parseRawArgs(rawArgs: string): { args: string[]; error?: string } {
+  const args: string[] = [];
+  let current = "";
+  let quote: string | undefined;
+
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const character = rawArgs[index];
+
+    if ((character === '"' || character === "'") && !quote) {
+      quote = character;
+      continue;
+    }
+
+    if (character === quote) {
+      quote = undefined;
+      continue;
+    }
+
+    if (/\s/.test(character) && !quote) {
+      if (current) {
+        args.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quote) {
+    return {
+      args: [],
+      error: "Launch args contain an unterminated quote.",
+    };
+  }
+
+  if (current) {
+    args.push(current);
+  }
+
+  return { args };
+}
+
 const initialAdapterState = initialAdapters();
+const initialProfileState = initialLaunchProfiles(initialAdapterState);
 
 export const useToolStore = create<ToolState>((set, get) => ({
   adapters: initialAdapterState,
   tools: initialAdapterState,
   activeToolId: "codex",
+  launchProfilesByAdapterId: initialProfileState,
   isCheckingAll: false,
   lastLaunchSpec: undefined,
   error: undefined,
   setActiveTool: (toolId) => set({ activeToolId: toolId }),
+  getLaunchProfile: (adapterId) => {
+    const adapter = get().adapters.find(
+      (candidate) => candidate.definition.id === adapterId,
+    );
+    const stored = get().launchProfilesByAdapterId[adapterId];
+    const command = adapter?.resolvedCommand ?? stored?.command ?? "";
+
+    return {
+      ...defaultLaunchProfile(adapterId, command),
+      ...stored,
+      adapterId,
+      command,
+    };
+  },
+  updateLaunchProfile: (adapterId, profilePatch) => {
+    set((state) => {
+      const adapter = state.adapters.find(
+        (candidate) => candidate.definition.id === adapterId,
+      );
+      const current =
+        state.launchProfilesByAdapterId[adapterId] ??
+        defaultLaunchProfile(adapterId, adapter?.resolvedCommand ?? "");
+      const next: ToolLaunchProfile = {
+        ...current,
+        ...profilePatch,
+        adapterId,
+        command: adapter?.resolvedCommand ?? current.command,
+      };
+
+      if (profilePatch.rawArgs !== undefined) {
+        const parsed = parseRawArgs(profilePatch.rawArgs);
+        next.args = parsed.args;
+      }
+
+      const launchProfilesByAdapterId = {
+        ...state.launchProfilesByAdapterId,
+        [adapterId]: next,
+      };
+      saveLaunchProfiles(launchProfilesByAdapterId);
+      return { launchProfilesByAdapterId };
+    });
+  },
+  resetLaunchProfile: (adapterId) => {
+    set((state) => {
+      const adapter = state.adapters.find(
+        (candidate) => candidate.definition.id === adapterId,
+      );
+      const launchProfilesByAdapterId = {
+        ...state.launchProfilesByAdapterId,
+        [adapterId]: defaultLaunchProfile(
+          adapterId,
+          adapter?.resolvedCommand ?? "",
+        ),
+      };
+      saveLaunchProfiles(launchProfilesByAdapterId);
+      return { launchProfilesByAdapterId };
+    });
+  },
   checkTool: async (adapterId) => {
     const adapter = get().adapters.find(
       (candidate) => candidate.definition.id === adapterId,
@@ -217,7 +380,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
       commandOverride: undefined,
     });
   },
-  buildLaunchSpec: async (adapterId, workingDirectory) => {
+  buildLaunchSpec: async (adapterId, projectPath) => {
     const adapter = get().adapters.find(
       (candidate) => candidate.definition.id === adapterId,
     );
@@ -232,20 +395,58 @@ export const useToolStore = create<ToolState>((set, get) => ({
       return undefined;
     }
 
+    const profile = get().getLaunchProfile(adapterId);
+    const parsed = parseRawArgs(profile.rawArgs);
+
+    if (parsed.error) {
+      set({ error: parsed.error });
+      return undefined;
+    }
+
+    let workingDirectory = projectPath;
+    const warnings: string[] = [];
+
+    if (profile.workingDirectoryMode === "home") {
+      try {
+        workingDirectory = await invoke<string>("get_home_directory");
+      } catch (error) {
+        set({ error: String(error) });
+        return undefined;
+      }
+    }
+
+    if (profile.workingDirectoryMode === "custom") {
+      workingDirectory = profile.customWorkingDirectory?.trim();
+      if (!workingDirectory) {
+        set({ error: "Configure a custom working directory before launch." });
+        return undefined;
+      }
+    }
+
+    if (!workingDirectory) {
+      set({ error: "Open a project folder before building a launch spec." });
+      return undefined;
+    }
+
+    if (profile.launchMode === "manual") {
+      warnings.push("Manual mode shows this command without starting a PTY.");
+    }
+
     try {
-      const result = await invoke<Omit<ToolLaunchSpec, "adapterId" | "name">>(
-        "build_tool_launch_spec",
-        {
-          request: {
-            command: adapter.resolvedCommand,
-            args: [],
-            projectPath: workingDirectory,
-          },
+      const result = await invoke<
+        Omit<ToolLaunchSpec, "adapterId" | "name" | "launchMode" | "warnings">
+      >("build_tool_launch_spec", {
+        request: {
+          command: adapter.resolvedCommand,
+          args: parsed.args,
+          projectPath: workingDirectory,
         },
-      );
+      });
       const spec: ToolLaunchSpec = {
         adapterId,
         name: adapter.definition.name,
+        launchMode: profile.launchMode,
+        warnings,
         ...result,
       };
       set({ lastLaunchSpec: spec, error: undefined });

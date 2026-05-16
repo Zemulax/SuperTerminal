@@ -28,6 +28,7 @@ export type ToolAdapterConfig = {
   adapterId: ToolAdapterId;
   enabled: boolean;
   commandOverride?: string;
+  installCommandOverride?: string;
 };
 
 export type ToolAdapterState = {
@@ -61,7 +62,57 @@ export type ToolLaunchSpec = {
   command: string;
   args: string[];
   workingDirectory: string;
+  launchMode: ToolLaunchMode;
   preview: string;
+  warnings: string[];
+};
+
+export type ToolLaunchMode = "pty" | "manual";
+
+export type ToolWorkingDirectoryMode = "project_root" | "home" | "custom";
+
+export type ToolLaunchProfile = {
+  adapterId: ToolAdapterId;
+  command: string;
+  args: string[];
+  rawArgs: string;
+  launchMode: ToolLaunchMode;
+  workingDirectoryMode: ToolWorkingDirectoryMode;
+  customWorkingDirectory?: string;
+  confirmBeforeLaunch: boolean;
+};
+
+export type InstallAttemptStatus =
+  | "planned"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "manual_only"
+  | "blocked"
+  | "cancelled";
+
+export type InstallCommandValidationResult = {
+  isAllowed: boolean;
+  requiresManualExecution: boolean;
+  isBlocked: boolean;
+  reason: string;
+  command: string;
+  executable?: string;
+  args: string[];
+  warnings: string[];
+};
+
+export type InstallAttemptResult = {
+  id: string;
+  adapterId: ToolAdapterId;
+  command: string;
+  status: InstallAttemptStatus;
+  exitCode?: number;
+  stdout: string;
+  stderr: string;
+  startedAt: string;
+  completedAt?: string;
+  message: string;
 };
 
 export type ProjectFileNode = {
@@ -133,6 +184,7 @@ export type PtySessionRecord = {
   id: string;
   projectPath: string;
   shell: string;
+  label?: string;
   status: string;
   cols: number;
   rows: number;

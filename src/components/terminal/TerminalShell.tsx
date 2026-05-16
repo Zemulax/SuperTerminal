@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { TerminalSquare } from "lucide-react";
+import { TerminalSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TerminalStatusBar } from "@/components/terminal/TerminalStatusBar";
 import { TerminalToolbar } from "@/components/terminal/TerminalToolbar";
+import { LaunchProfileEditor } from "@/components/tools/LaunchProfileEditor";
 import {
   XTermSurface,
   type XTermSurfaceHandle,
@@ -11,7 +12,12 @@ import {
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
-import type { PtyErrorEvent, PtyExitEvent, PtyOutputEvent } from "@/lib/types";
+import type {
+  PtyErrorEvent,
+  PtyExitEvent,
+  PtyOutputEvent,
+  ToolLaunchSpec,
+} from "@/lib/types";
 
 const CRLF = "\r\n";
 
@@ -25,6 +31,9 @@ export function TerminalShell() {
   const resizeTimerRef = useRef<number>();
   const lastToolIdRef = useRef<string>();
   const lastProjectIdRef = useRef<string>();
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [launchConfirmOpen, setLaunchConfirmOpen] = useState(false);
+  const [pendingLaunchSpec, setPendingLaunchSpec] = useState<ToolLaunchSpec>();
 
   const selectedProject = useProjectStore((state) => state.selectedProject);
   const adapters = useToolStore((state) => state.adapters);
@@ -32,10 +41,15 @@ export function TerminalShell() {
   const buildLaunchSpec = useToolStore((state) => state.buildLaunchSpec);
   const activeTool =
     adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
+  const launchProfile = useToolStore((state) =>
+    state.getLaunchProfile(activeTool.definition.id),
+  );
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
   const mode = useSessionStore((state) => state.mode);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const shell = useSessionStore((state) => state.shell);
+  const activeRunningToolId = useSessionStore((state) => state.activeToolId);
+  const activeRunningToolName = useSessionStore((state) => state.activeToolName);
   const cols = useSessionStore((state) => state.cols);
   const rows = useSessionStore((state) => state.rows);
   const inputBuffer = useSessionStore((state) => state.inputBuffer);
@@ -46,7 +60,6 @@ export function TerminalShell() {
   const startDemoSession = useSessionStore((state) => state.startDemoSession);
   const stopDemoSession = useSessionStore((state) => state.stopDemoSession);
   const setStatus = useSessionStore((state) => state.setStatus);
-  const setError = useSessionStore((state) => state.setError);
   const appendTranscript = useSessionStore((state) => state.appendTranscript);
   const clearTranscript = useSessionStore((state) => state.clearTranscript);
   const setInputBuffer = useSessionStore((state) => state.setInputBuffer);
@@ -78,7 +91,14 @@ export function TerminalShell() {
     writeLine("");
 
     try {
-      await startPtySession(selectedProject.path, dimensions.cols, dimensions.rows);
+      await startPtySession(
+        selectedProject.path,
+        dimensions.cols,
+        dimensions.rows,
+        undefined,
+        [],
+        "Shell",
+      );
       terminalRef.current?.focus();
     } catch (error) {
       writeLine(`Failed to start PTY session: ${String(error)}`);
@@ -92,12 +112,62 @@ export function TerminalShell() {
     writeLine,
   ]);
 
+  const executeLaunchSpec = useCallback(
+    async (spec: ToolLaunchSpec) => {
+      const dimensions = terminalRef.current?.getDimensions() ?? {
+        cols: 80,
+        rows: 24,
+      };
+
+      terminalRef.current?.clear();
+      clearTranscript();
+      setInputBuffer("");
+      writeLine(`Launching ${spec.name} in ${spec.workingDirectory}...`);
+      writeLine("No prompts or project context are injected in this phase.");
+      if (spec.warnings.length > 0) {
+        spec.warnings.forEach((warning) => writeLine(`Warning: ${warning}`));
+      }
+      writeLine("");
+
+      try {
+        await startPtySession(
+          spec.workingDirectory,
+          dimensions.cols,
+          dimensions.rows,
+          spec.command,
+          spec.args,
+          spec.name,
+          spec.adapterId,
+          spec.name,
+        );
+        terminalRef.current?.focus();
+      } catch (error) {
+        writeLine(`Failed to launch tool: ${String(error)}`);
+      }
+    },
+    [clearTranscript, setInputBuffer, startPtySession, writeLine],
+  );
+
   const handleLaunchTool = useCallback(async () => {
-    if (!selectedProject || sessionStatus === "starting" || sessionStatus === "active") {
+    if (!selectedProject) {
+      writeLine("Open a project folder before launching a tool.");
       return;
     }
 
-    const dimensions = terminalRef.current?.getDimensions() ?? { cols: 80, rows: 24 };
+    if (sessionStatus === "starting" || sessionStatus === "active") {
+      writeLine(
+        `A session is already active for ${activeRunningToolName ?? "Shell"}. Stop it before launching another tool.`,
+      );
+      return;
+    }
+
+    if (activeTool.status !== "ready") {
+      writeLine(
+        `${activeTool.definition.name} is not detected. Install or configure the command before launching.`,
+      );
+      return;
+    }
+
     const spec = await buildLaunchSpec(activeTool.definition.id, selectedProject.path);
 
     if (!spec) {
@@ -105,35 +175,30 @@ export function TerminalShell() {
       return;
     }
 
-    terminalRef.current?.clear();
-    clearTranscript();
-    setInputBuffer("");
-    writeLine(`Launching ${spec.name} inside SuperTerminal's local PTY...`);
-    writeLine("No prompts or project context are injected in this phase.");
-    writeLine("Launch preview:");
-    writeLine(spec.preview);
-    writeLine("");
-
-    try {
-      await startPtySession(
-        selectedProject.path,
-        dimensions.cols,
-        dimensions.rows,
-        spec.command,
-        spec.args,
-      );
-      terminalRef.current?.focus();
-    } catch (error) {
-      writeLine(`Failed to launch tool: ${String(error)}`);
+    if (spec.launchMode === "manual") {
+      writeLine("Manual launch profile preview:");
+      writeLine(spec.preview);
+      spec.warnings.forEach((warning) => writeLine(`Warning: ${warning}`));
+      return;
     }
+
+    if (launchProfile.confirmBeforeLaunch) {
+      setPendingLaunchSpec(spec);
+      setLaunchConfirmOpen(true);
+      return;
+    }
+
+    await executeLaunchSpec(spec);
   }, [
     activeTool.definition.id,
+    activeTool.definition.name,
+    activeTool.status,
+    activeRunningToolName,
     buildLaunchSpec,
-    clearTranscript,
+    executeLaunchSpec,
+    launchProfile.confirmBeforeLaunch,
     selectedProject,
     sessionStatus,
-    setInputBuffer,
-    startPtySession,
     writeLine,
   ]);
 
@@ -408,15 +473,18 @@ export function TerminalShell() {
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-shell">
           <TerminalToolbar
             activeTool={activeTool}
+            activeRunningToolId={activeRunningToolId}
+            activeRunningToolName={activeRunningToolName}
+            launchProfile={launchProfile}
             mode={mode}
             onClear={handleClear}
+            onEditProfile={() => setProfileEditorOpen(true)}
             onFocus={handleFocus}
             onLaunchTool={handleLaunchTool}
             onStart={handleStart}
             onStartDemo={handleStartDemo}
             onStop={handleStop}
             project={selectedProject}
-            shell={shell}
             status={sessionStatus}
           />
 
@@ -446,6 +514,7 @@ export function TerminalShell() {
           )}
 
           <TerminalStatusBar
+            activeRunningToolName={activeRunningToolName}
             activeTool={activeTool}
             cols={cols}
             mode={mode}
@@ -457,6 +526,106 @@ export function TerminalShell() {
           />
         </div>
       </div>
+
+      {profileEditorOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+          <div className="w-full max-w-xl rounded-lg border border-border bg-white p-5 shadow-shell">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-sm font-semibold text-slate-950">
+                  Edit launch profile
+                </div>
+                <p className="mt-1 text-sm leading-5 text-slate-500">
+                  Configure args and launch behavior for {activeTool.definition.name}.
+                </p>
+              </div>
+              <Button
+                aria-label="Close launch profile editor"
+                onClick={() => setProfileEditorOpen(false)}
+                size="icon"
+                variant="ghost"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+            <div className="mt-4">
+              <LaunchProfileEditor compact tool={activeTool} />
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button onClick={() => setProfileEditorOpen(false)} variant="primary">
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {launchConfirmOpen && pendingLaunchSpec ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+          <div className="w-full max-w-xl rounded-lg border border-border bg-white p-5 shadow-shell">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-sm font-semibold text-slate-950">
+                  Launch {pendingLaunchSpec.name} in SuperTerminal?
+                </div>
+                <p className="mt-1 text-sm leading-5 text-slate-500">
+                  SuperTerminal will start this tool in a local PTY session.
+                </p>
+              </div>
+              <Button
+                aria-label="Close launch confirmation"
+                onClick={() => setLaunchConfirmOpen(false)}
+                size="icon"
+                variant="ghost"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Command
+                </div>
+                <pre className="mt-1 whitespace-pre-wrap rounded-md border border-border bg-slate-50 p-3 font-mono text-xs text-slate-800">
+                  {[pendingLaunchSpec.command, ...pendingLaunchSpec.args].join(" ")}
+                </pre>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  Working directory
+                </div>
+                <div className="mt-1 rounded-md border border-border bg-slate-50 px-3 py-2 font-mono text-xs text-slate-700">
+                  {pendingLaunchSpec.workingDirectory}
+                </div>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-5 text-slate-600">
+                No prompt or project context will be injected in this phase.
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                onClick={() => setLaunchConfirmOpen(false)}
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const spec = pendingLaunchSpec;
+                  setLaunchConfirmOpen(false);
+                  setPendingLaunchSpec(undefined);
+                  void executeLaunchSpec(spec);
+                }}
+                variant="primary"
+              >
+                Launch
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
