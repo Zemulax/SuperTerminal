@@ -56,8 +56,8 @@ export function TerminalToolbar({
   onClear,
   onFocus,
 }: TerminalToolbarProps) {
-  const canStart = Boolean(project) && status !== "starting" && status !== "active";
-  const canLaunchTool = canStart && activeTool.status === "ready";
+  const canStart = status !== "starting" && status !== "active";
+  const canLaunchTool = Boolean(project) && canStart && activeTool.status === "ready";
   const canStop = status === "active" || status === "starting";
   const selectedToolDiffers =
     Boolean(activeRunningToolId) && activeRunningToolId !== activeTool.definition.id;
@@ -84,7 +84,7 @@ export function TerminalToolbar({
             title={project?.path}
           >
             {!project
-              ? "Open a project folder before starting a terminal session."
+              ? "No project open | Start Shell uses your home directory."
               : status === "active" && selectedToolDiffers
                 ? `Active session: ${activeRunningToolName}. Selected tool: ${activeTool.definition.name}. Stop the session before launching another tool.`
                 : activeTool.status === "ready"
@@ -99,11 +99,11 @@ export function TerminalToolbar({
           disabled={!canStart}
           onClick={onStart}
           size="sm"
-          title={project ? "Start local PTY shell" : "Open a project first"}
+          title={project ? "Start local PTY shell in project root" : "Start local PTY shell in your home directory"}
           variant="primary"
         >
           <PlayCircle className="h-4 w-4" aria-hidden />
-          Start Terminal
+          Start Shell
         </Button>
         <Button
           disabled={!canLaunchTool}

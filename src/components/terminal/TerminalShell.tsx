@@ -54,6 +54,7 @@ export function TerminalShell() {
   const mode = useSessionStore((state) => state.mode);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const shell = useSessionStore((state) => state.shell);
+  const ptySession = useSessionStore((state) => state.ptySession);
   const activeRunningToolId = useSessionStore((state) => state.activeToolId);
   const activeRunningToolName = useSessionStore((state) => state.activeToolName);
   const cols = useSessionStore((state) => state.cols);
@@ -155,22 +156,26 @@ export function TerminalShell() {
   );
 
   const handleStart = useCallback(async () => {
-    if (!selectedProject || sessionStatus === "starting" || sessionStatus === "active") {
+    if (sessionStatus === "starting" || sessionStatus === "active") {
       return;
     }
 
     const dimensions = terminalRef.current?.getDimensions() ?? { cols: 80, rows: 24 };
+    const requestedPath = selectedProject?.path ?? "";
+    const targetLabel = selectedProject
+      ? selectedProject.path
+      : "your home directory";
 
     terminalRef.current?.clear();
     clearTranscript();
     setInputBuffer("");
-    writeLine(`Starting local PTY session in ${selectedProject.path}...`);
+    writeLine(`Starting local PTY session in ${targetLabel}...`);
     writeLine("SuperTerminal will not inject commands. You control this shell.");
     writeLine("");
 
     try {
       await startPtySession(
-        selectedProject.path,
+        requestedPath,
         dimensions.cols,
         dimensions.rows,
         undefined,
@@ -178,8 +183,8 @@ export function TerminalShell() {
         "Shell",
         undefined,
         undefined,
-        selectedProject.name,
-        selectedProject.path,
+        selectedProject?.name,
+        selectedProject?.path,
       );
       terminalRef.current?.focus();
     } catch (error) {
@@ -362,7 +367,8 @@ export function TerminalShell() {
 
   const handleReady = useCallback(() => {
     terminalRef.current?.writeln("SuperTerminal PTY host ready.");
-    terminalRef.current?.writeln("Open a project and click Start Terminal.");
+    terminalRef.current?.writeln("Click Start Shell to open a local shell.");
+    terminalRef.current?.writeln("With no project open, the shell starts in your home directory.");
     terminalRef.current?.writeln("A real local shell starts only after your click.");
     terminalRef.current?.writeln("");
   }, []);
@@ -574,30 +580,39 @@ export function TerminalShell() {
             status={sessionStatus}
           />
 
-          {selectedProject ? (
-            <div className="min-h-0 flex-1">
-              <XTermSurface
-                onData={handleData}
-                onReady={handleReady}
-                onResize={handleResize}
-                ref={terminalRef}
-              />
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-[#0b1019] px-8 text-center">
-              <TerminalSquare className="h-10 w-10 text-slate-600" aria-hidden />
-              <div className="mt-4 text-lg font-semibold text-white">
-                Open a project folder before starting a terminal session.
+          <div className="border-b border-slate-800 bg-[#0d1420] px-4 py-3">
+            <div className="grid gap-3 text-xs text-slate-300 lg:grid-cols-[1fr_1fr]">
+              <div>
+                <div className="text-sm font-semibold text-white">SuperTerminal</div>
+                <div className="mt-1">
+                  Project:{" "}
+                  <span className="font-mono text-slate-100">
+                    {selectedProject?.name ?? "Home shell"}
+                  </span>
+                </div>
+                <div className="mt-1 truncate" title={ptySession?.projectPath ?? selectedProject?.path}>
+                  Working directory:{" "}
+                  <span className="font-mono text-slate-100">
+                    {ptySession?.projectPath ?? selectedProject?.path ?? "User home on start"}
+                  </span>
+                </div>
               </div>
-              <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-                The PTY host needs a local working directory. SuperTerminal will
-                not start a shell on launch.
-              </p>
-              <Button className="mt-5" disabled variant="secondary">
-                Start disabled until project is open
-              </Button>
+              <div className="leading-5 text-slate-400">
+                <div>Tool: {activeTool.definition.name}</div>
+                <div>Select a tool, generate context, then inject only when ready.</div>
+                <div>SuperTerminal never bundles tools or manages credentials.</div>
+              </div>
             </div>
-          )}
+          </div>
+
+          <div className="min-h-0 flex-1">
+            <XTermSurface
+              onData={handleData}
+              onReady={handleReady}
+              onResize={handleResize}
+              ref={terminalRef}
+            />
+          </div>
 
           <TerminalStatusBar
             activeRunningToolName={activeRunningToolName}
@@ -610,6 +625,7 @@ export function TerminalShell() {
             shell={shell}
             status={sessionStatus}
             transcriptCaptureEnabled={historySettings.captureTranscript}
+            workingDirectory={ptySession?.projectPath}
           />
         </div>
       </div>

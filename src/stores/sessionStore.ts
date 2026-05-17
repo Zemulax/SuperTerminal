@@ -113,7 +113,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         id: session.id,
         kind: toolId ? "tool" : "shell",
         projectName,
-        projectPath: projectRootPath ?? projectPath,
+        projectPath: projectRootPath || projectPath || undefined,
         workingDirectory: session.projectPath,
         toolId,
         toolName: toolName ?? session.label ?? sessionLabel,

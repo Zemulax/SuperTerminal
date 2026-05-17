@@ -45,6 +45,9 @@ type ToolState = {
 
 function loadConfigs(): Record<string, ToolAdapterConfig> {
   try {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return {};
+    }
     const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
@@ -53,14 +56,24 @@ function loadConfigs(): Record<string, ToolAdapterConfig> {
 }
 
 function saveConfigs(adapters: ToolAdapterState[]) {
-  const configs = Object.fromEntries(
-    adapters.map((adapter) => [adapter.definition.id, adapter.config]),
-  );
-  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(configs));
+  try {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return;
+    }
+    const configs = Object.fromEntries(
+      adapters.map((adapter) => [adapter.definition.id, adapter.config]),
+    );
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(configs));
+  } catch {
+    // Local storage can be unavailable in some WebView policies. Runtime state still works.
+  }
 }
 
 function loadLaunchProfiles(): Record<string, ToolLaunchProfile> {
   try {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return {};
+    }
     const raw = localStorage.getItem(LAUNCH_PROFILE_STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
@@ -69,7 +82,14 @@ function loadLaunchProfiles(): Record<string, ToolLaunchProfile> {
 }
 
 function saveLaunchProfiles(profiles: Record<string, ToolLaunchProfile>) {
-  localStorage.setItem(LAUNCH_PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+  try {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return;
+    }
+    localStorage.setItem(LAUNCH_PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+  } catch {
+    // Local storage can be unavailable in some WebView policies. Runtime state still works.
+  }
 }
 
 function defaultLaunchProfile(

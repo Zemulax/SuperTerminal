@@ -56,6 +56,23 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     return null;
   }
 
+  const namedTools = tools.filter((tool) => tool.definition.id !== "generic");
+  const customTools = tools.filter((tool) => tool.definition.id === "generic");
+  const statusGroups = [
+    { title: "Ready", tools: namedTools.filter((tool) => tool.status === "ready") },
+    { title: "Missing", tools: namedTools.filter((tool) => tool.status === "missing") },
+    {
+      title: "Needs Setup",
+      tools: namedTools.filter((tool) => tool.status === "needs_setup"),
+    },
+    {
+      title: "Not Checked",
+      tools: namedTools.filter((tool) =>
+        ["not_checked", "checking", "error"].includes(tool.status),
+      ),
+    },
+  ];
+
   return (
     <div className="absolute inset-y-0 right-0 z-20 flex w-full max-w-xl flex-col border-l border-border bg-white shadow-shell">
       <div className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -144,8 +161,38 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             overrides are executable paths or command names; launch args live in
             each tool's launch profile.
           </p>
+          <div className="mt-4 space-y-5">
+            {statusGroups.map((group) => (
+              <section key={group.title}>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  {group.title}
+                </div>
+                {group.tools.length === 0 ? (
+                  <div className="rounded-md border border-border bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                    No tools in this group.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {group.tools.map((tool) => (
+                      <ToolCard key={tool.definition.id} tool={tool} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <h2 className="text-sm font-semibold text-slate-950">
+            Advanced / Custom tools
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-slate-500">
+            Generic CLI remains available for testing custom commands, but it is
+            kept out of the main header until configured.
+          </p>
           <div className="mt-3 space-y-3">
-            {tools.map((tool) => (
+            {customTools.map((tool) => (
               <ToolCard key={tool.definition.id} tool={tool} />
             ))}
           </div>

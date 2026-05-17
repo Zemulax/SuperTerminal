@@ -2,7 +2,7 @@
 
 SuperTerminal is a local-first desktop shell for working with AI coding CLI tools from one focused interface.
 
-Phase 8 adds local session history and optional bounded transcript previews. SuperTerminal records shell/tool session metadata, links context injections to active sessions, and lets you inspect or clear recent history during the running app session. It still does not bundle CLIs, manage credentials, silently inject prompts, or upload project code.
+Phase 9 is a Windows reliability and UX debug pass. SuperTerminal now has a compact tool header, safer shell working-directory handling, Windows command resolution diagnostics, a folder picker with manual path fallback, robust session-history date formatting, and a branded terminal welcome banner. It still does not bundle CLIs, manage credentials, silently inject prompts, or upload project code.
 
 ## What Is Included
 
@@ -13,6 +13,9 @@ Phase 8 adds local session history and optional bounded transcript previews. Sup
 - Zustand stores for project, tool, and session state
 - Tool Adapter Registry for Codex CLI, Claude CLI, OpenCode, OpenClaude, Grok CLI, and Generic CLI
 - Local version/status checks with short timeouts
+- Compact header tool switcher for named tools; Generic CLI lives in advanced settings
+- Windows command resolution for `.exe`, `.cmd`, and `.bat` variants plus common Node/Cargo paths
+- Tool troubleshooting diagnostics for PATH and common command availability
 - Command overrides stored in frontend local state
 - Launch previews for ready adapters
 - Per-tool launch profiles for args, launch mode, working directory, and confirmation
@@ -26,6 +29,7 @@ Phase 8 adds local session history and optional bounded transcript previews. Sup
 - Context injection records linked to terminal sessions where possible
 - Demo project fallback
 - Real local project folder scanning
+- Windows folder picker with manual path input fallback
 - Expandable file explorer
 - Safe text file preview
 - xterm.js terminal UI shell
@@ -89,13 +93,13 @@ Secret/env files such as `.env` are never previewed. Large files are truncated a
 
 ## Real Terminal
 
-After opening a project, click `Start Terminal` in the terminal toolbar. SuperTerminal starts a local shell in the selected project folder and streams it through xterm.js.
+Click `Start Shell` in the terminal toolbar. If a project is open, SuperTerminal starts a local shell in that project folder and streams it through xterm.js. If no project is open, it starts in your user home directory.
 
 On Windows the default shell is `powershell.exe`, with `cmd.exe` fallback. On macOS/Linux the default comes from `SHELL`, then `/bin/bash`, then `/bin/sh`.
 
 Input is forwarded directly to the local PTY session. This supports normal shell interaction such as typing, Enter, Ctrl+C, arrow keys where the shell supports them, and pasted text.
 
-Click `Stop Terminal` to kill the hosted shell session. Natural shell exit is detected and updates the UI.
+Click `Stop Terminal` to kill the hosted shell session. Natural shell exit is detected and updates the UI. SuperTerminal should never default a normal shell to `C:\Windows`.
 
 ## Demo Terminal
 
@@ -109,7 +113,9 @@ Open Settings to inspect adapter definitions, command overrides, status, detecte
 
 Use `Check` for one adapter or `Check All` from the header switcher. Detection only runs short local version commands such as `codex --version` or `claude --version`.
 
-Generic CLI starts as `needs setup`. Set its command override to a command available on your machine, such as `powershell.exe` or `cmd.exe` on Windows, then run `Check`.
+On Windows, SuperTerminal resolves commands through PATH plus common tool locations such as `C:\Program Files\nodejs`, `%APPDATA%\npm`, `%USERPROFILE%\.cargo\bin`, and `%LOCALAPPDATA%\Microsoft\WindowsApps`. It also tries `.exe`, `.cmd`, and `.bat` variants, so commands like `npm` can resolve to `npm.cmd`.
+
+Generic CLI starts as `needs setup` and is available under Settings → Advanced / Custom tools. Set its command override to a command available on your machine, such as `powershell.exe` or `cmd.exe` on Windows, then run `Check`.
 
 After opening a project and checking a ready adapter, use `Build Launch Preview` in Settings or `Launch Tool` in the terminal toolbar. Launch starts the selected command with that adapter's launch profile through the local PTY host. No prompts or project context are injected.
 

@@ -19,6 +19,7 @@ type ProjectState = {
   isLoadingPreview: boolean;
   error?: string;
   previewError?: string;
+  openProjectWithPicker: () => Promise<void>;
   openProjectByPath: (path: string) => Promise<void>;
   scanProject: (path: string) => Promise<void>;
   selectFile: (file: ProjectFileNode) => void;
@@ -51,6 +52,24 @@ export const useProjectStore = create<ProjectState>((set) => ({
   isLoadingPreview: false,
   error: undefined,
   previewError: undefined,
+  openProjectWithPicker: async () => {
+    set({ isOpeningProject: true, error: undefined, previewError: undefined });
+    try {
+      const pickedPath = await invoke<string | null>("pick_project_folder");
+      if (!pickedPath) {
+        set({ isOpeningProject: false });
+        return;
+      }
+
+      await useProjectStore.getState().openProjectByPath(pickedPath);
+    } catch (error) {
+      set({
+        isOpeningProject: false,
+        isScanningProject: false,
+        error: `${String(error)} Paste a path manually if needed.`,
+      });
+    }
+  },
   openProjectByPath: async (path) => {
     const trimmedPath = path.trim();
 

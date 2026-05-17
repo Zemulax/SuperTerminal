@@ -1,5 +1,6 @@
 import {
   Clipboard,
+  CircleHelp,
   Download,
   RotateCcw,
   Save,
@@ -9,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LaunchProfileEditor } from "@/components/tools/LaunchProfileEditor";
@@ -16,7 +18,12 @@ import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
 import { useInstallStore } from "@/stores/installStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useToolStore } from "@/stores/toolStore";
-import type { InstallCommandValidationResult, ToolAdapterState } from "@/lib/types";
+import type {
+  CommandResolutionDiagnostics,
+  EnvironmentDiagnostics,
+  InstallCommandValidationResult,
+  ToolAdapterState,
+} from "@/lib/types";
 
 type ToolCardProps = {
   tool: ToolAdapterState;
@@ -51,6 +58,11 @@ export function ToolCard({ tool }: ToolCardProps) {
   const [pendingValidation, setPendingValidation] =
     useState<InstallCommandValidationResult>();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [commandDiagnostics, setCommandDiagnostics] =
+    useState<CommandResolutionDiagnostics>();
+  const [environmentDiagnostics, setEnvironmentDiagnostics] =
+    useState<EnvironmentDiagnostics>();
 
   useEffect(() => {
     setCommandOverride(tool.config.commandOverride ?? "");
@@ -77,6 +89,25 @@ export function ToolCard({ tool }: ToolCardProps) {
 
   const handleValidateInstall = async () => {
     await validateInstallCommand(tool.definition.id, installPreview);
+    await loadDiagnostics();
+  };
+
+  const loadDiagnostics = async () => {
+    const commandToCheck =
+      tool.config.commandOverride?.trim() || tool.definition.defaultCommand;
+    try {
+      const [commandResult, environmentResult] = await Promise.all([
+        invoke<CommandResolutionDiagnostics>("get_command_resolution_diagnostics", {
+          command: commandToCheck,
+        }),
+        invoke<EnvironmentDiagnostics>("get_environment_diagnostics"),
+      ]);
+      setCommandDiagnostics(commandResult);
+      setEnvironmentDiagnostics(environmentResult);
+    } catch {
+      setCommandDiagnostics(undefined);
+      setEnvironmentDiagnostics(undefined);
+    }
   };
 
   const handleInstallClick = async () => {
@@ -201,6 +232,57 @@ export function ToolCard({ tool }: ToolCardProps) {
             <div className="mt-1 leading-5">{validation.reason}</div>
           </div>
         ) : null}
+
+        <div className="rounded-md border border-border bg-slate-50 px-3 py-2">
+          <button
+            className="flex w-full items-center justify-between gap-3 text-left"
+            onClick={() => {
+              const nextOpen = !diagnosticsOpen;
+              setDiagnosticsOpen(nextOpen);
+              if (nextOpen && !environmentDiagnostics) {
+                void loadDiagnostics();
+              }
+            }}
+            type="button"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <CircleHelp className="h-4 w-4" aria-hidden />
+              Troubleshooting
+            </span>
+            <span className="text-xs text-slate-500">
+              {diagnosticsOpen ? "Hide" : "Show"}
+            </span>
+          </button>
+          {diagnosticsOpen ? (
+            <div className="mt-3 space-y-3 text-xs text-slate-600">
+              <DiagnosticRow
+                label="Selected command"
+                result={commandDiagnostics}
+              />
+              {environmentDiagnostics ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <DiagnosticRow label="node" result={environmentDiagnostics.node} />
+                  <DiagnosticRow label="npm" result={environmentDiagnostics.npm} />
+                  <DiagnosticRow label="pnpm" result={environmentDiagnostics.pnpm} />
+                  <DiagnosticRow label="yarn" result={environmentDiagnostics.yarn} />
+                  <DiagnosticRow label="cargo" result={environmentDiagnostics.cargo} />
+                </div>
+              ) : (
+                <div>Diagnostics unavailable.</div>
+              )}
+              {commandDiagnostics ? (
+                <details>
+                  <summary className="cursor-pointer font-medium text-slate-700">
+                    Checked paths ({commandDiagnostics.checkedPaths.length})
+                  </summary>
+                  <pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap rounded border border-border bg-white p-2 font-mono text-[11px] text-slate-600">
+                    {commandDiagnostics.checkedPaths.join("\n")}
+                  </pre>
+                </details>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-4">
@@ -417,5 +499,33 @@ export function ToolCard({ tool }: ToolCardProps) {
         </div>
       ) : null}
     </Card>
+  );
+}
+
+function DiagnosticRow({
+  label,
+  result,
+}: {
+  label: string;
+  result?: CommandResolutionDiagnostics;
+}) {
+  return (
+    <div className="min-w-0 rounded border border-border bg-white px-2 py-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium text-slate-700">{label}</span>
+        <span
+          className={
+            result?.found
+              ? "text-emerald-700"
+              : "text-rose-700"
+          }
+        >
+          {result?.found ? "found" : "missing"}
+        </span>
+      </div>
+      <div className="mt-1 truncate font-mono text-[11px] text-slate-500">
+        {result?.resolvedPath ?? result?.message ?? "Not checked"}
+      </div>
+    </div>
   );
 }

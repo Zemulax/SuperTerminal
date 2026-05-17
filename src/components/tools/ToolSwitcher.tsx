@@ -1,12 +1,17 @@
 import { ChevronDown, RefreshCw, TerminalSquare } from "lucide-react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
+import { getCompactToolName, getToolStatusIcon, getToolStatusLabel } from "@/lib/statusIcons";
 import { cn } from "@/lib/utils";
 
 export function ToolSwitcher() {
-  const adapters = useToolStore((state) => state.adapters);
+  const allAdapters = useToolStore((state) => state.adapters);
+  const adapters = useMemo(
+    () => allAdapters.filter((adapter) => adapter.definition.id !== "generic"),
+    [allAdapters],
+  );
   const activeToolId = useToolStore((state) => state.activeToolId);
   const isCheckingAll = useToolStore((state) => state.isCheckingAll);
   const setActiveTool = useToolStore((state) => state.setActiveTool);
@@ -20,22 +25,32 @@ export function ToolSwitcher() {
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <div className="hidden items-center gap-1 rounded-md border border-border bg-white p-1 xl:flex">
+      <div className="hidden min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-md border border-border bg-white p-1 xl:flex">
         {adapters.map((adapter) => (
           <button
             key={adapter.definition.id}
             type="button"
             onClick={() => setActiveTool(adapter.definition.id)}
             className={cn(
-              "flex h-8 items-center gap-2 rounded px-2.5 text-xs font-medium text-slate-600 transition-colors",
+              "flex h-8 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium text-slate-600 transition-colors",
               activeToolId === adapter.definition.id
                 ? "bg-slate-950 text-white"
                 : "hover:bg-slate-100 hover:text-slate-950",
             )}
-            title={adapter.message}
+            title={`${adapter.definition.name}: ${getToolStatusLabel(adapter.status)}. ${adapter.message ?? ""}`}
           >
-            <span>{adapter.definition.name}</span>
-            <ToolStatusBadge status={adapter.status} />
+            <span>{getCompactToolName(adapter.definition.name)}</span>
+            <span
+              className={cn(
+                "rounded border px-1 py-0.5 font-mono text-[10px] leading-none",
+                activeToolId === adapter.definition.id
+                  ? "border-white/20 bg-white/10 text-white"
+                  : "border-slate-200 bg-slate-50 text-slate-600",
+              )}
+              aria-label={getToolStatusLabel(adapter.status)}
+            >
+              {getToolStatusIcon(adapter.status)}
+            </span>
             {sessionStatus === "active" && runningToolId === adapter.definition.id ? (
               <span
                 className={cn(
@@ -62,7 +77,7 @@ export function ToolSwitcher() {
         >
           {adapters.map((adapter) => (
             <option key={adapter.definition.id} value={adapter.definition.id}>
-              {adapter.definition.name}
+              {getCompactToolName(adapter.definition.name)} {getToolStatusIcon(adapter.status)}
             </option>
           ))}
         </select>

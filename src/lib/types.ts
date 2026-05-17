@@ -200,6 +200,26 @@ export type HistorySettings = {
   transcriptMaxChars: number;
 };
 
+export type CommandResolutionDiagnostics = {
+  command: string;
+  found: boolean;
+  resolvedPath?: string;
+  checkedPaths: string[];
+  attemptedVariants: string[];
+  message: string;
+};
+
+export type EnvironmentDiagnostics = {
+  os: string;
+  homeDir?: string;
+  pathEntries: string[];
+  npm: CommandResolutionDiagnostics;
+  node: CommandResolutionDiagnostics;
+  pnpm: CommandResolutionDiagnostics;
+  yarn: CommandResolutionDiagnostics;
+  cargo: CommandResolutionDiagnostics;
+};
+
 export type ProjectFileNode = {
   name: string;
   path: string;

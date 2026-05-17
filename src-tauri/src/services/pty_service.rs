@@ -2,7 +2,6 @@ use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize}
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    env,
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
@@ -11,7 +10,7 @@ use std::{
 };
 use tauri::{AppHandle, Emitter};
 
-use crate::services::file_scanner;
+use crate::services::{command_resolver, file_scanner};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -112,19 +111,29 @@ impl PtyState {
             }
         }
 
-        let validation = file_scanner::validate_project_path(&request.project_path);
-        if !validation.exists || !validation.is_directory || !validation.readable {
-            return Err(validation.message);
-        }
-
-        let project_path = PathBuf::from(&request.project_path)
-            .canonicalize()
-            .map_err(|error| format!("Unable to resolve project path: {error}"))?;
+        let requested_path = request.project_path.trim();
+        let project_path = if requested_path.is_empty() {
+            command_resolver::safe_working_directory(None)?
+        } else {
+            let validation = file_scanner::validate_project_path(requested_path);
+            if validation.exists && validation.is_directory && validation.readable {
+                PathBuf::from(requested_path)
+                    .canonicalize()
+                    .map_err(|error| format!("Unable to resolve project path: {error}"))?
+            } else {
+                command_resolver::safe_working_directory(None)?
+            }
+        };
         let command_name = request
             .command
             .or(request.shell)
             .filter(|value| !value.trim().is_empty())
             .unwrap_or_else(default_shell);
+        let command_resolution = command_resolver::resolve_command(&command_name);
+        let spawn_command = command_resolution
+            .resolved_path
+            .clone()
+            .unwrap_or_else(|| command_name.clone());
         let label = request
             .session_label
             .filter(|value| !value.trim().is_empty())
@@ -142,7 +151,7 @@ impl PtyState {
             })
             .map_err(|error| format!("Unable to open PTY: {error}"))?;
 
-        let mut command = CommandBuilder::new(&command_name);
+        let mut command = CommandBuilder::new(&spawn_command);
         for arg in request.args.unwrap_or_default() {
             command.arg(arg);
         }
@@ -151,7 +160,16 @@ impl PtyState {
         let child = pair
             .slave
             .spawn_command(command)
-            .map_err(|error| format!("Unable to start command '{command_name}': {error}"))?;
+            .map_err(|error| {
+                if command_resolution.found {
+                    format!("Unable to start command '{spawn_command}': {error}")
+                } else {
+                    format!(
+                        "Unable to start command '{command_name}': {error}. {}",
+                        command_resolution.message
+                    )
+                }
+            })?;
         let mut reader = pair
             .master
             .try_clone_reader()
@@ -365,7 +383,7 @@ impl PtyState {
 fn default_shell() -> String {
     #[cfg(windows)]
     {
-        if command_exists("powershell.exe") {
+        if command_resolver::resolve_command("powershell.exe").found {
             "powershell.exe".to_string()
         } else {
             "cmd.exe".to_string()
@@ -386,18 +404,6 @@ fn default_shell() -> String {
             "/bin/sh".to_string()
         }
     }
-}
-
-#[cfg(windows)]
-fn command_exists(command: &str) -> bool {
-    env::var_os("PATH")
-        .map(|paths| {
-            env::split_paths(&paths).any(|path| {
-                let candidate = path.join(command);
-                candidate.exists()
-            })
-        })
-        .unwrap_or(false)
 }
 
 fn now_millis() -> u128 {

@@ -7,7 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::services::file_scanner;
+use crate::services::{command_resolver, file_scanner};
 
 const TOOL_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 const OUTPUT_LIMIT: usize = 600;
@@ -70,15 +70,29 @@ pub fn check_tool(request: CheckToolRequest) -> Result<ToolCheckResult, String> 
         request.detection_args
     };
 
+    let command_resolution = command_resolver::resolve_command(command);
+    if !command_resolution.found {
+        return Ok(ToolCheckResult {
+            status: "missing".to_string(),
+            resolved_command: command.to_string(),
+            version: None,
+            message: command_resolution.message,
+        });
+    }
+
+    let resolved_command = command_resolution
+        .resolved_path
+        .clone()
+        .unwrap_or_else(|| command.to_string());
     let mut last_error = None;
 
     for args in detection_args {
-        match run_check_command(command, &args) {
+        match run_check_command(&resolved_command, &args) {
             Ok(result) => {
                 if result.timed_out {
                     return Ok(ToolCheckResult {
                         status: "error".to_string(),
-                        resolved_command: command.to_string(),
+                        resolved_command: resolved_command.clone(),
                         version: None,
                         message: "Tool check timed out.".to_string(),
                     });
@@ -88,7 +102,7 @@ pub fn check_tool(request: CheckToolRequest) -> Result<ToolCheckResult, String> 
                 if result.code == Some(0) {
                     return Ok(ToolCheckResult {
                         status: "ready".to_string(),
-                        resolved_command: command.to_string(),
+                        resolved_command: resolved_command.clone(),
                         version: first_useful_line(&combined),
                         message: if combined.is_empty() {
                             "Command responded successfully.".to_string()
@@ -108,9 +122,9 @@ pub fn check_tool(request: CheckToolRequest) -> Result<ToolCheckResult, String> 
                 if is_not_found_error(&error) {
                     return Ok(ToolCheckResult {
                         status: "missing".to_string(),
-                        resolved_command: command.to_string(),
+                        resolved_command: resolved_command.clone(),
                         version: None,
-                        message: "Command was not found on this machine.".to_string(),
+                        message: command_resolution.message,
                     });
                 }
 
@@ -121,7 +135,7 @@ pub fn check_tool(request: CheckToolRequest) -> Result<ToolCheckResult, String> 
 
     Ok(ToolCheckResult {
         status: "error".to_string(),
-        resolved_command: command.to_string(),
+        resolved_command,
         version: None,
         message: last_error.unwrap_or_else(|| "Tool check failed.".to_string()),
     })

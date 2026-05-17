@@ -16,6 +16,7 @@ type TerminalStatusBarProps = {
   cols: number;
   rows: number;
   transcriptCaptureEnabled: boolean;
+  workingDirectory?: string;
 };
 
 export function TerminalStatusBar({
@@ -29,6 +30,7 @@ export function TerminalStatusBar({
   cols,
   rows,
   transcriptCaptureEnabled,
+  workingDirectory,
 }: TerminalStatusBarProps) {
   const shortSessionId = sessionId ? sessionId.slice(0, 12) : "no session";
 
@@ -40,8 +42,8 @@ export function TerminalStatusBar({
         <span className="mx-2 text-slate-600">|</span>
         <span className="font-mono text-slate-200">{shortSessionId}</span>
       </div>
-      <div className="truncate font-mono" title={project?.path}>
-        {project?.path ?? "Open a project folder to enable terminal hosting"}
+      <div className="truncate font-mono" title={workingDirectory ?? project?.path}>
+        {workingDirectory ?? project?.path ?? "Shell will start in user home"}
       </div>
       <div className="flex flex-wrap gap-2 text-slate-300">
         <span>{activeRunningToolName ?? shell ?? activeTool.resolvedCommand}</span>

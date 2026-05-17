@@ -2,7 +2,7 @@ import { FolderOpen, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToolSwitcher } from "@/components/tools/ToolSwitcher";
-import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
+import { getToolStatusIcon, getToolStatusLabel } from "@/lib/statusIcons";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useToolStore } from "@/stores/toolStore";
@@ -13,7 +13,9 @@ type HeaderProps = {
 
 export function Header({ onOpenSettings }: HeaderProps) {
   const selectedProject = useProjectStore((state) => state.selectedProject);
-  const openProjectByPath = useProjectStore((state) => state.openProjectByPath);
+  const openProjectWithPicker = useProjectStore(
+    (state) => state.openProjectWithPicker,
+  );
   const isOpeningProject = useProjectStore((state) => state.isOpeningProject);
   const adapters = useToolStore((state) => state.adapters);
   const activeToolId = useToolStore((state) => state.activeToolId);
@@ -21,14 +23,6 @@ export function Header({ onOpenSettings }: HeaderProps) {
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
   const activeTool =
     adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
-
-  const handleOpenProject = () => {
-    const path = window.prompt("Paste a local project folder path");
-
-    if (path) {
-      void openProjectByPath(path);
-    }
-  };
 
   return (
     <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-white px-5">
@@ -59,10 +53,15 @@ export function Header({ onOpenSettings }: HeaderProps) {
               {selectedProject.totalFiles ?? 0} files
             </span>
           ) : null}
-          <span className="truncate text-xs text-slate-500">
-            {activeTool.definition.name}
+          <span className="truncate text-xs text-slate-500" title={activeTool.definition.name}>
+            {activeTool.definition.name.replace(" CLI", "")}
           </span>
-          <ToolStatusBadge status={activeTool.status} />
+          <span
+            className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-600"
+            title={getToolStatusLabel(activeTool.status)}
+          >
+            {getToolStatusIcon(activeTool.status)}
+          </span>
           {sessionStatus === "active" && activeRunningToolName ? (
             <Badge>{activeRunningToolName} running</Badge>
           ) : null}
@@ -88,7 +87,7 @@ export function Header({ onOpenSettings }: HeaderProps) {
         </div>
         <Button
           disabled={isOpeningProject}
-          onClick={handleOpenProject}
+          onClick={() => void openProjectWithPicker()}
           size="sm"
           variant="secondary"
         >

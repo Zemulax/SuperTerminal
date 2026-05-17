@@ -7,7 +7,10 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use crate::services::install_validator::{self, InstallCommandValidationResult};
+use crate::services::{
+    command_resolver,
+    install_validator::{self, InstallCommandValidationResult},
+};
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 300;
 const OUTPUT_LIMIT: usize = 20_000;
@@ -133,15 +136,31 @@ fn run_process(
         .executable
         .as_ref()
         .ok_or_else(|| "Install command has no executable.".to_string())?;
+    let resolution = command_resolver::resolve_command(executable);
+    if !resolution.found {
+        return Err(format!(
+            "Unable to start install command because `{executable}` was not found. {} Checked {} locations.",
+            resolution.message,
+            resolution.checked_paths.len()
+        ));
+    }
+    let executable_path = resolution
+        .resolved_path
+        .as_deref()
+        .unwrap_or(executable);
 
-    let mut child = Command::new(executable)
+    let mut child = Command::new(executable_path)
         .args(&validation.args)
         .current_dir(working_directory)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|error| format!("Unable to start install command: {error}"))?;
+        .map_err(|error| {
+            format!(
+                "Unable to start install command `{executable}` resolved as `{executable_path}`: {error}"
+            )
+        })?;
 
     let mut stdout = child
         .stdout
@@ -210,8 +229,7 @@ fn resolve_working_directory(path: Option<String>) -> Result<PathBuf, String> {
                 Err("Install working directory is not a folder.".to_string())
             }
         }
-        _ => std::env::current_dir()
-            .map_err(|error| format!("Unable to determine current directory: {error}")),
+        _ => command_resolver::safe_working_directory(None),
     }
 }
 

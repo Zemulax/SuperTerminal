@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { formatDateSafe, formatDurationSafe } from "@/lib/dateUtils";
 import type { TerminalSessionRecord } from "@/lib/types";
 
 type SessionHistoryPanelProps = {
@@ -11,25 +12,8 @@ type SessionHistoryPanelProps = {
   onClose: () => void;
 };
 
-function formatDate(value?: string) {
-  if (!value) {
-    return "Not ended";
-  }
-
-  return new Date(value).toLocaleString();
-}
-
 function duration(session: TerminalSessionRecord) {
-  const end = session.endedAt ? new Date(session.endedAt).getTime() : Date.now();
-  const start = new Date(session.startedAt).getTime();
-  const seconds = Math.max(0, Math.round((end - start) / 1000));
-
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}m ${seconds % 60}s`;
+  return formatDurationSafe(session.startedAt, session.endedAt);
 }
 
 async function copyText(value?: string) {
@@ -175,7 +159,7 @@ export function SessionHistoryPanel({ open, onClose }: SessionHistoryPanelProps)
                       {[session.command, ...session.args].join(" ")}
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500">
-                      <span>{formatDate(session.startedAt)}</span>
+                      <span>{formatDateSafe(session.startedAt)}</span>
                       <span>{duration(session)}</span>
                     </div>
                   </button>
@@ -221,8 +205,15 @@ export function SessionHistoryPanel({ open, onClose }: SessionHistoryPanelProps)
                 <Info label="Project" value={selectedSession.projectName ?? "Unknown"} />
                 <Info label="Working directory" value={selectedSession.workingDirectory} />
                 <Info label="Project path" value={selectedSession.projectPath ?? "Unknown"} />
-                <Info label="Started" value={formatDate(selectedSession.startedAt)} />
-                <Info label="Ended" value={formatDate(selectedSession.endedAt)} />
+                <Info label="Started" value={formatDateSafe(selectedSession.startedAt)} />
+                <Info
+                  label="Ended"
+                  value={
+                    selectedSession.endedAt
+                      ? formatDateSafe(selectedSession.endedAt)
+                      : "Active"
+                  }
+                />
                 <Info
                   label="Exit code"
                   value={
@@ -300,7 +291,7 @@ export function SessionHistoryPanel({ open, onClose }: SessionHistoryPanelProps)
                         </div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">
                           {record.characterCount.toLocaleString()} characters ·{" "}
-                          {formatDate(record.createdAt)}
+                          {formatDateSafe(record.createdAt)}
                         </div>
                         {record.promptFilePath ? (
                           <div className="mt-1 truncate font-mono text-[11px] text-slate-500">

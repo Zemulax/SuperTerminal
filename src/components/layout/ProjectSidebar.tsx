@@ -12,6 +12,9 @@ export function ProjectSidebar() {
   const isScanningProject = useProjectStore((state) => state.isScanningProject);
   const error = useProjectStore((state) => state.error);
   const openProjectByPath = useProjectStore((state) => state.openProjectByPath);
+  const openProjectWithPicker = useProjectStore(
+    (state) => state.openProjectWithPicker,
+  );
   const scanProject = useProjectStore((state) => state.scanProject);
   const loadMockProject = useProjectStore((state) => state.loadMockProject);
   const clearProject = useProjectStore((state) => state.clearProject);
@@ -61,12 +64,21 @@ export function ProjectSidebar() {
             <Button
               className="flex-1"
               disabled={isOpeningProject || isScanningProject}
+              onClick={() => void openProjectWithPicker()}
               size="sm"
-              type="submit"
+              type="button"
               variant="primary"
             >
               <FolderOpen className="h-4 w-4" aria-hidden />
-              {isOpeningProject ? "Opening..." : "Open"}
+              {isOpeningProject ? "Opening..." : "Choose Folder"}
+            </Button>
+            <Button
+              disabled={isOpeningProject || isScanningProject}
+              size="sm"
+              type="submit"
+              variant="secondary"
+            >
+              Open Path
             </Button>
             <Button onClick={loadMockProject} size="sm" variant="secondary">
               Demo
