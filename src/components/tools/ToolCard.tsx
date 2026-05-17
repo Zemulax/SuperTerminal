@@ -36,9 +36,8 @@ export function ToolCard({ tool }: ToolCardProps) {
   const updateToolConfig = useToolStore((state) => state.updateToolConfig);
   const resetToolConfig = useToolStore((state) => state.resetToolConfig);
   const buildLaunchSpec = useToolStore((state) => state.buildLaunchSpec);
-  const launchProfile = useToolStore((state) =>
-    state.getLaunchProfile(tool.definition.id),
-  );
+  const getLaunchProfile = useToolStore((state) => state.getLaunchProfile);
+  const launchProfile = getLaunchProfile(tool.definition.id);
   const lastLaunchSpec = useToolStore((state) => state.lastLaunchSpec);
   const validateInstallCommand = useInstallStore(
     (state) => state.validateInstallCommand,

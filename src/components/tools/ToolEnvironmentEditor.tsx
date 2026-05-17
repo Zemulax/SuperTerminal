@@ -8,6 +8,10 @@ type ToolEnvironmentEditorProps = {
   tool: ToolAdapterState;
 };
 
+const EMPTY_SECRET_RECORDS: ReturnType<
+  typeof useSecretEnvStore.getState
+>["recordsByToolId"][string] = [];
+
 const suggestionsByTool: Record<string, string[]> = {
   codex: ["OPENAI_API_KEY"],
   claude: ["ANTHROPIC_API_KEY"],
@@ -19,7 +23,7 @@ const suggestionsByTool: Record<string, string[]> = {
 
 export function ToolEnvironmentEditor({ tool }: ToolEnvironmentEditorProps) {
   const records = useSecretEnvStore(
-    (state) => state.recordsByToolId[tool.definition.id] ?? [],
+    (state) => state.recordsByToolId[tool.definition.id] ?? EMPTY_SECRET_RECORDS,
   );
   const isSaving = useSecretEnvStore((state) => state.isSaving);
   const error = useSecretEnvStore((state) => state.error);
