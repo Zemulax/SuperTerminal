@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
+import type { TerminalPreferences } from "@/lib/types";
 
 export type XTermSurfaceHandle = {
   write: (value: string) => void;
@@ -16,10 +17,11 @@ type XTermSurfaceProps = {
   onData?: (data: string) => void;
   onReady?: () => void;
   onResize?: (dimensions: { cols: number; rows: number }) => void;
+  preferences: TerminalPreferences;
 };
 
 export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
-  function XTermSurface({ onData, onReady, onResize }, ref) {
+  function XTermSurface({ onData, onReady, onResize, preferences }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const terminalRef = useRef<Terminal>();
     const fitAddonRef = useRef<FitAddon>();
@@ -33,6 +35,25 @@ export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
     useEffect(() => {
       onResizeRef.current = onResize;
     }, [onResize]);
+
+    useEffect(() => {
+      const terminal = terminalRef.current;
+      if (!terminal) {
+        return;
+      }
+
+      terminal.options.fontSize = preferences.fontSize;
+      terminal.options.fontFamily = preferences.fontFamily;
+      terminal.options.lineHeight = preferences.lineHeight;
+      terminal.options.cursorBlink = preferences.cursorBlink;
+      requestAnimationFrame(() => {
+        try {
+          fitAddonRef.current?.fit();
+        } catch {
+          // The terminal may be detached while settings are changing.
+        }
+      });
+    }, [preferences]);
 
     useImperativeHandle(
       ref,
@@ -66,12 +87,12 @@ export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
       const terminal = new Terminal({
         allowProposedApi: false,
         convertEol: true,
-        cursorBlink: true,
+        cursorBlink: preferences.cursorBlink,
         cursorStyle: "bar",
         disableStdin: false,
-        fontFamily: "JetBrains Mono, SFMono-Regular, Consolas, monospace",
-        fontSize: 13,
-        lineHeight: 1.4,
+        fontFamily: preferences.fontFamily,
+        fontSize: preferences.fontSize,
+        lineHeight: preferences.lineHeight,
         scrollback: 2000,
         theme: {
           background: "#160f2e",

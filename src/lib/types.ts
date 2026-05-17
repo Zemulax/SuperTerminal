@@ -31,6 +31,35 @@ export type ToolAdapterConfig = {
   installCommandOverride?: string;
 };
 
+export type TerminalPreferences = {
+  fontSize: number;
+  fontFamily: string;
+  lineHeight: number;
+  cursorBlink: boolean;
+};
+
+export type ToolSecretEnvVar = {
+  id: string;
+  toolId: string;
+  name: string;
+  enabled: boolean;
+  secretRef: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ToolEnvVarInput = {
+  toolId: string;
+  name: string;
+  value: string;
+  enabled: boolean;
+};
+
+export type RedactSecretsResult = {
+  text: string;
+  redacted: boolean;
+};
+
 export type ToolAdapterState = {
   definition: ToolAdapterDefinition;
   config: ToolAdapterConfig;
@@ -65,6 +94,7 @@ export type ToolLaunchSpec = {
   launchMode: ToolLaunchMode;
   preview: string;
   warnings: string[];
+  environmentNames?: string[];
 };
 
 export type ToolLaunchMode = "pty" | "manual";
@@ -296,6 +326,17 @@ export type PtySessionRecord = {
   startedAt: string;
   endedAt?: string;
   exitCode?: number;
+};
+
+export type StartPtySessionRequest = {
+  projectPath: string;
+  command?: string;
+  shell?: string;
+  args?: string[];
+  cols: number;
+  rows: number;
+  sessionLabel?: string;
+  toolId?: string;
 };
 
 export type PtyOutputEvent = {

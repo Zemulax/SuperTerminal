@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { defaultToolAdapters } from "@/lib/mockData";
+import { useSecretEnvStore } from "@/stores/secretEnvStore";
 import type {
   ToolAdapterConfig,
   ToolAdapterId,
@@ -466,6 +467,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
     }
 
     try {
+      await useSecretEnvStore.getState().loadToolSecrets(adapterId);
+      const environmentNames =
+        useSecretEnvStore.getState().getEnabledSecretNames(adapterId);
       const result = await invoke<
         Omit<ToolLaunchSpec, "adapterId" | "name" | "launchMode" | "warnings">
       >("build_tool_launch_spec", {
@@ -480,7 +484,14 @@ export const useToolStore = create<ToolState>((set, get) => ({
         name: adapter.definition.name,
         launchMode: profile.launchMode,
         warnings,
+        environmentNames,
         ...result,
+        preview:
+          environmentNames.length > 0
+            ? `${result.preview}\n\nEnvironment:\n${environmentNames
+                .map((name) => `${name}=********`)
+                .join("\n")}`
+            : result.preview,
       };
       set({ lastLaunchSpec: spec, error: undefined });
       return spec;

@@ -106,6 +106,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           cols,
           rows,
           sessionLabel,
+          toolId,
         },
       });
       const launchCommand = command ?? session.shell;

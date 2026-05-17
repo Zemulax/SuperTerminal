@@ -10,7 +10,7 @@ use std::{
 };
 use tauri::{AppHandle, Emitter};
 
-use crate::services::{command_resolver, file_scanner};
+use crate::services::{command_resolver, file_scanner, tool_secrets};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,6 +22,7 @@ pub struct StartPtySessionRequest {
     pub cols: u16,
     pub rows: u16,
     pub session_label: Option<String>,
+    pub tool_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -172,6 +173,7 @@ impl PtyState {
             is_default_shell,
         );
         set_command_cwd(&mut command, &project_path);
+        apply_tool_environment(&mut command, request.tool_id.as_deref())?;
 
         let child = pair
             .slave
@@ -501,6 +503,17 @@ fn set_command_cwd(command: &mut CommandBuilder, project_path: &Path) {
     {
         command.cwd(project_path.as_os_str());
     }
+}
+
+fn apply_tool_environment(
+    command: &mut CommandBuilder,
+    tool_id: Option<&str>,
+) -> Result<(), String> {
+    for (name, value) in tool_secrets::load_enabled_secret_values(tool_id)? {
+        command.env(name, value);
+    }
+
+    Ok(())
 }
 
 #[cfg(windows)]

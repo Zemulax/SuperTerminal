@@ -14,6 +14,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LaunchProfileEditor } from "@/components/tools/LaunchProfileEditor";
+import { ToolEnvironmentEditor } from "@/components/tools/ToolEnvironmentEditor";
 import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
 import { useInstallStore } from "@/stores/installStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -287,6 +288,10 @@ export function ToolCard({ tool }: ToolCardProps) {
 
       <div className="mt-4">
         <LaunchProfileEditor tool={tool} />
+      </div>
+
+      <div className="mt-4">
+        <ToolEnvironmentEditor tool={tool} />
       </div>
 
       {lastLaunchSpec?.adapterId === tool.definition.id ? (

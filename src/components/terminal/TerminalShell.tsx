@@ -14,7 +14,9 @@ import {
 import { useProjectStore } from "@/stores/projectStore";
 import { useContextStore } from "@/stores/contextStore";
 import { useHistoryStore } from "@/stores/historyStore";
+import { useSecretEnvStore } from "@/stores/secretEnvStore";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useTerminalPreferencesStore } from "@/stores/terminalPreferencesStore";
 import { useToolStore } from "@/stores/toolStore";
 import type {
   PtyErrorEvent,
@@ -73,6 +75,10 @@ export function TerminalShell() {
   const clearTranscript = useSessionStore((state) => state.clearTranscript);
   const setInputBuffer = useSessionStore((state) => state.setInputBuffer);
   const historySettings = useHistoryStore((state) => state.settings);
+  const terminalPreferences = useTerminalPreferencesStore(
+    (state) => state.preferences,
+  );
+  const loadToolSecrets = useSecretEnvStore((state) => state.loadToolSecrets);
 
   const writePrompt = useCallback(() => {
     terminalRef.current?.write(`${activeTool.resolvedCommand}> `);
@@ -512,6 +518,10 @@ export function TerminalShell() {
   }, []);
 
   useEffect(() => {
+    void loadToolSecrets(activeTool.definition.id);
+  }, [activeTool.definition.id, loadToolSecrets]);
+
+  useEffect(() => {
     if (
       terminalReady &&
       !autoStartedRef.current &&
@@ -580,6 +590,7 @@ export function TerminalShell() {
               onData={handleData}
               onReady={handleReady}
               onResize={handleResize}
+              preferences={terminalPreferences}
               ref={terminalRef}
             />
           </div>
@@ -686,6 +697,18 @@ export function TerminalShell() {
               <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-5 text-slate-600">
                 No prompt or project context will be injected in this phase.
               </div>
+              {pendingLaunchSpec.environmentNames?.length ? (
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Environment
+                  </div>
+                  <pre className="mt-1 whitespace-pre-wrap rounded-md border border-border bg-slate-50 p-3 font-mono text-xs text-slate-800">
+                    {pendingLaunchSpec.environmentNames
+                      .map((name) => `${name}=********`)
+                      .join("\n")}
+                  </pre>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-5 flex justify-end gap-2">

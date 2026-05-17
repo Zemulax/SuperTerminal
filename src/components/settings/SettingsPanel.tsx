@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useHistoryStore } from "@/stores/historyStore";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useInstallStore } from "@/stores/installStore";
+import { useTerminalPreferencesStore } from "@/stores/terminalPreferencesStore";
 import { useToolStore } from "@/stores/toolStore";
 
 type SettingsPanelProps = {
@@ -51,6 +52,15 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const historySettings = useHistoryStore((state) => state.settings);
   const updateHistorySettings = useHistoryStore((state) => state.updateSettings);
   const clearHistory = useHistoryStore((state) => state.clearHistory);
+  const terminalPreferences = useTerminalPreferencesStore(
+    (state) => state.preferences,
+  );
+  const updateTerminalPreferences = useTerminalPreferencesStore(
+    (state) => state.updatePreferences,
+  );
+  const resetTerminalPreferences = useTerminalPreferencesStore(
+    (state) => state.resetPreferences,
+  );
 
   if (!open) {
     return null;
@@ -95,6 +105,87 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <p className="mt-1 text-sm leading-5 text-slate-500">{section.body}</p>
             </section>
           ))}
+        </div>
+
+        <div className="mt-6">
+          <h2 className="text-sm font-semibold text-slate-950">
+            Terminal appearance
+          </h2>
+          <p className="mt-1 text-sm leading-5 text-slate-500">
+            These settings apply to the embedded xterm.js surface and refit the
+            terminal when changed. No backend shell behavior changes.
+          </p>
+          <div className="mt-3 grid gap-3 rounded-md border border-border bg-slate-50 p-3 text-xs">
+            <label>
+              <span className="font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Font size
+              </span>
+              <select
+                className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-xs text-slate-700"
+                onChange={(event) =>
+                  updateTerminalPreferences({
+                    fontSize: Number(event.target.value),
+                  })
+                }
+                value={terminalPreferences.fontSize}
+              >
+                {[12, 13, 14, 15, 16, 18].map((size) => (
+                  <option key={size} value={size}>
+                    {size}px
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Font family
+              </span>
+              <input
+                className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 font-mono text-xs text-slate-700"
+                onChange={(event) =>
+                  updateTerminalPreferences({
+                    fontFamily: event.target.value,
+                  })
+                }
+                value={terminalPreferences.fontFamily}
+              />
+            </label>
+            <label>
+              <span className="font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Line height
+              </span>
+              <select
+                className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 text-xs text-slate-700"
+                onChange={(event) =>
+                  updateTerminalPreferences({
+                    lineHeight: Number(event.target.value),
+                  })
+                }
+                value={terminalPreferences.lineHeight}
+              >
+                {[1.1, 1.2, 1.25, 1.35, 1.5].map((lineHeight) => (
+                  <option key={lineHeight} value={lineHeight}>
+                    {lineHeight}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                checked={terminalPreferences.cursorBlink}
+                onChange={(event) =>
+                  updateTerminalPreferences({
+                    cursorBlink: event.target.checked,
+                  })
+                }
+                type="checkbox"
+              />
+              Cursor blink
+            </label>
+            <Button onClick={resetTerminalPreferences} size="sm" variant="secondary">
+              Reset terminal appearance
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6">

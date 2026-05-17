@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useSecretEnvStore } from "@/stores/secretEnvStore";
 import type {
   ContextInjectionRecord,
   HistorySettings,
@@ -97,30 +98,36 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
           : session,
       ),
     })),
-  appendTranscript: (sessionId, chunk) =>
-    set((state) => {
-      const maxChars = Math.max(1_000, state.settings.transcriptMaxChars);
-
-      return {
-        sessions: state.sessions.map((session) => {
-          if (session.id !== sessionId || !session.transcriptCaptured) {
-            return session;
-          }
-
-          const transcriptPreview = boundedAppend(
-            session.transcriptPreview ?? "",
-            chunk,
-            maxChars,
-          );
+  appendTranscript: (sessionId, chunk) => {
+    void useSecretEnvStore
+      .getState()
+      .redactText(chunk)
+      .then((redactedChunk) => {
+        set((state) => {
+          const maxChars = Math.max(1_000, state.settings.transcriptMaxChars);
 
           return {
-            ...session,
-            transcriptPreview,
-            transcriptCharCount: transcriptPreview.length,
+            sessions: state.sessions.map((session) => {
+              if (session.id !== sessionId || !session.transcriptCaptured) {
+                return session;
+              }
+
+              const transcriptPreview = boundedAppend(
+                session.transcriptPreview ?? "",
+                redactedChunk,
+                maxChars,
+              );
+
+              return {
+                ...session,
+                transcriptPreview,
+                transcriptCharCount: transcriptPreview.length,
+              };
+            }),
           };
-        }),
-      };
-    }),
+        });
+      });
+  },
   saveContextInjectionRecord: (record) =>
     set((state) => {
       const contextInjections = [
