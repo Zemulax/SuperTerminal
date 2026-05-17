@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { TerminalSquare, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ContextInjectionPanel } from "@/components/context/ContextInjectionPanel";
 import { SessionHistoryPanel } from "@/components/history/SessionHistoryPanel";
@@ -35,11 +35,13 @@ export function TerminalShell() {
   const resizeTimerRef = useRef<number>();
   const lastToolIdRef = useRef<string>();
   const lastProjectIdRef = useRef<string>();
+  const autoStartedRef = useRef(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [launchConfirmOpen, setLaunchConfirmOpen] = useState(false);
   const [pendingLaunchSpec, setPendingLaunchSpec] = useState<ToolLaunchSpec>();
+  const [terminalReady, setTerminalReady] = useState(false);
 
   const selectedProject = useProjectStore((state) => state.selectedProject);
   const adapters = useToolStore((state) => state.adapters);
@@ -162,16 +164,10 @@ export function TerminalShell() {
 
     const dimensions = terminalRef.current?.getDimensions() ?? { cols: 80, rows: 24 };
     const requestedPath = selectedProject?.path ?? "";
-    const targetLabel = selectedProject
-      ? selectedProject.path
-      : "your home directory";
 
     terminalRef.current?.clear();
     clearTranscript();
     setInputBuffer("");
-    writeLine(`Starting local PTY session in ${targetLabel}...`);
-    writeLine("SuperTerminal will not inject commands. You control this shell.");
-    writeLine("");
 
     try {
       await startPtySession(
@@ -210,7 +206,6 @@ export function TerminalShell() {
       clearTranscript();
       setInputBuffer("");
       writeLine(`Launching ${spec.name} in ${spec.workingDirectory}...`);
-      writeLine("No prompts or project context are injected in this phase.");
       if (spec.warnings.length > 0) {
         spec.warnings.forEach((warning) => writeLine(`Warning: ${warning}`));
       }
@@ -244,10 +239,19 @@ export function TerminalShell() {
     }
 
     if (sessionStatus === "starting" || sessionStatus === "active") {
-      writeLine(
-        `A session is already active for ${activeRunningToolName ?? "Shell"}. Stop it before launching another tool.`,
-      );
-      return;
+      if (activeRunningToolId) {
+        writeLine(
+          `A session is already active for ${activeRunningToolName ?? "Shell"}. Stop it before launching another tool.`,
+        );
+        return;
+      }
+
+      try {
+        await stopPtySession();
+      } catch (error) {
+        writeLine(`Failed to stop shell before launch: ${String(error)}`);
+        return;
+      }
     }
 
     if (activeTool.status !== "ready") {
@@ -282,12 +286,14 @@ export function TerminalShell() {
     activeTool.definition.id,
     activeTool.definition.name,
     activeTool.status,
+    activeRunningToolId,
     activeRunningToolName,
     buildLaunchSpec,
     executeLaunchSpec,
     launchProfile.confirmBeforeLaunch,
     selectedProject,
     sessionStatus,
+    stopPtySession,
     writeLine,
   ]);
 
@@ -366,11 +372,8 @@ export function TerminalShell() {
   }, []);
 
   const handleReady = useCallback(() => {
-    terminalRef.current?.writeln("SuperTerminal PTY host ready.");
-    terminalRef.current?.writeln("Click Start Shell to open a local shell.");
-    terminalRef.current?.writeln("With no project open, the shell starts in your home directory.");
-    terminalRef.current?.writeln("A real local shell starts only after your click.");
-    terminalRef.current?.writeln("");
+    setTerminalReady(true);
+    terminalRef.current?.focus();
   }, []);
 
   const handleData = useCallback(
@@ -509,6 +512,18 @@ export function TerminalShell() {
   }, []);
 
   useEffect(() => {
+    if (
+      terminalReady &&
+      !autoStartedRef.current &&
+      sessionStatus !== "starting" &&
+      sessionStatus !== "active"
+    ) {
+      autoStartedRef.current = true;
+      void handleStart();
+    }
+  }, [handleStart, sessionStatus, terminalReady]);
+
+  useEffect(() => {
     if (lastToolIdRef.current && lastToolIdRef.current !== activeTool.definition.id) {
       writeLine("");
       writeLine(`Switched active tool to ${activeTool.definition.name}.`);
@@ -545,65 +560,20 @@ export function TerminalShell() {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-white">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <TerminalSquare className="h-4 w-4 text-slate-500" aria-hidden />
-            <h1 className="truncate text-base font-semibold text-slate-950">
-              Terminal
-            </h1>
-          </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Real local PTY host. Shells start only after explicit user action.
-          </p>
-        </div>
-      </div>
-
       <div className="min-h-0 flex-1 p-5">
-        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-950 shadow-shell">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-violet-950 bg-[#160f2e] font-mono shadow-shell">
           <TerminalToolbar
             activeTool={activeTool}
-            activeRunningToolId={activeRunningToolId}
             activeRunningToolName={activeRunningToolName}
-            launchProfile={launchProfile}
-            mode={mode}
             onClear={handleClear}
             onEditProfile={() => setProfileEditorOpen(true)}
-            onFocus={handleFocus}
             onLaunchTool={handleLaunchTool}
             onOpenContext={() => setContextPanelOpen(true)}
             onOpenHistory={() => setHistoryPanelOpen(true)}
-            onStart={handleStart}
-            onStartDemo={handleStartDemo}
             onStop={handleStop}
             project={selectedProject}
             status={sessionStatus}
           />
-
-          <div className="border-b border-slate-800 bg-[#0d1420] px-4 py-3">
-            <div className="grid gap-3 text-xs text-slate-300 lg:grid-cols-[1fr_1fr]">
-              <div>
-                <div className="text-sm font-semibold text-white">SuperTerminal</div>
-                <div className="mt-1">
-                  Project:{" "}
-                  <span className="font-mono text-slate-100">
-                    {selectedProject?.name ?? "Home shell"}
-                  </span>
-                </div>
-                <div className="mt-1 truncate" title={ptySession?.projectPath ?? selectedProject?.path}>
-                  Working directory:{" "}
-                  <span className="font-mono text-slate-100">
-                    {ptySession?.projectPath ?? selectedProject?.path ?? "User home on start"}
-                  </span>
-                </div>
-              </div>
-              <div className="leading-5 text-slate-400">
-                <div>Tool: {activeTool.definition.name}</div>
-                <div>Select a tool, generate context, then inject only when ready.</div>
-                <div>SuperTerminal never bundles tools or manages credentials.</div>
-              </div>
-            </div>
-          </div>
 
           <div className="min-h-0 flex-1">
             <XTermSurface

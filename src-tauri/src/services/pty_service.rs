@@ -117,19 +117,32 @@ impl PtyState {
         } else {
             let validation = file_scanner::validate_project_path(requested_path);
             if validation.exists && validation.is_directory && validation.readable {
-                PathBuf::from(requested_path)
+                let resolved = PathBuf::from(requested_path)
                     .canonicalize()
-                    .map_err(|error| format!("Unable to resolve project path: {error}"))?
+                    .map_err(|error| format!("Unable to resolve project path: {error}"))?;
+                if command_resolver::is_unsafe_windows_directory(&resolved) {
+                    command_resolver::safe_working_directory(None)?
+                } else {
+                    command_resolver::normalize_windows_path(resolved)
+                }
             } else {
                 command_resolver::safe_working_directory(None)?
             }
         };
-        let command_name = request
+        let requested_command = request
             .command
             .or(request.shell)
-            .filter(|value| !value.trim().is_empty())
-            .unwrap_or_else(default_shell);
+            .filter(|value| !value.trim().is_empty());
+        let is_default_shell = requested_command.is_none();
+        let command_name = requested_command.unwrap_or_else(default_shell);
+        let command_args = request.args.unwrap_or_default();
         let command_resolution = command_resolver::resolve_command(&command_name);
+        if !is_default_shell && !command_resolution.found {
+            return Err(format!(
+                "Unable to launch `{command_name}`. {}",
+                command_resolution.message
+            ));
+        }
         let spawn_command = command_resolution
             .resolved_path
             .clone()
@@ -151,11 +164,14 @@ impl PtyState {
             })
             .map_err(|error| format!("Unable to open PTY: {error}"))?;
 
-        let mut command = CommandBuilder::new(&spawn_command);
-        for arg in request.args.unwrap_or_default() {
-            command.arg(arg);
-        }
-        command.cwd(project_path.as_os_str());
+        let mut command = build_pty_command(
+            &command_name,
+            &spawn_command,
+            &command_args,
+            &project_path,
+            is_default_shell,
+        );
+        set_command_cwd(&mut command, &project_path);
 
         let child = pair
             .slave
@@ -174,10 +190,18 @@ impl PtyState {
             .master
             .try_clone_reader()
             .map_err(|error| format!("Unable to create PTY reader: {error}"))?;
-        let writer = pair
+        let mut writer = pair
             .master
             .take_writer()
             .map_err(|error| format!("Unable to create PTY writer: {error}"))?;
+        write_startup_commands(
+            &mut writer,
+            &command_name,
+            &spawn_command,
+            &command_args,
+            &project_path,
+            is_default_shell,
+        )?;
 
         let record = PtySessionRecord {
             id: session_id.clone(),
@@ -380,14 +404,136 @@ impl PtyState {
     }
 }
 
+fn build_pty_command(
+    command_name: &str,
+    spawn_command: &str,
+    args: &[String],
+    working_directory: &Path,
+    is_default_shell: bool,
+) -> CommandBuilder {
+    #[cfg(windows)]
+    {
+        let _ = (command_name, spawn_command, args, working_directory, is_default_shell);
+        let cmd_resolution = command_resolver::resolve_command("cmd.exe");
+        let cmd_path = cmd_resolution
+            .resolved_path
+            .unwrap_or_else(|| "cmd.exe".to_string());
+
+        let mut command = CommandBuilder::new(cmd_path);
+        command.arg("/D");
+        command.arg("/Q");
+        command
+    }
+
+    #[cfg(not(windows))]
+    {
+        let mut command = CommandBuilder::new(spawn_command);
+        for arg in args {
+            command.arg(arg);
+        }
+        command
+    }
+}
+
+fn write_startup_commands(
+    writer: &mut Box<dyn Write + Send>,
+    command_name: &str,
+    spawn_command: &str,
+    args: &[String],
+    working_directory: &Path,
+    is_default_shell: bool,
+) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let directory = windows_cmd_path(working_directory);
+        write_cmd_line(writer, &format!("cd /d {}", cmd_quote(&directory)))?;
+
+        if !is_default_shell && !is_cmd_command(command_name) {
+            let command_path = strip_windows_verbatim_prefix(spawn_command);
+            let rendered_args = args
+                .iter()
+                .map(|arg| cmd_quote(arg))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let command_line = if rendered_args.is_empty() {
+                cmd_quote(&command_path)
+            } else {
+                format!("{} {}", cmd_quote(&command_path), rendered_args)
+            };
+            write_cmd_line(writer, &command_line)?;
+        }
+
+        writer
+            .flush()
+            .map_err(|error| format!("Unable to flush PTY startup commands: {error}"))?;
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = (
+            writer,
+            command_name,
+            spawn_command,
+            args,
+            working_directory,
+            is_default_shell,
+        );
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+fn write_cmd_line(writer: &mut Box<dyn Write + Send>, line: &str) -> Result<(), String> {
+    writer
+        .write_all(format!("{line}\r\n").as_bytes())
+        .map_err(|error| format!("Unable to write PTY startup command: {error}"))
+}
+
+fn set_command_cwd(command: &mut CommandBuilder, project_path: &Path) {
+    #[cfg(windows)]
+    {
+        let normalized = command_resolver::normalize_windows_path(project_path.to_path_buf());
+        command.cwd(normalized.as_os_str());
+    }
+
+    #[cfg(not(windows))]
+    {
+        command.cwd(project_path.as_os_str());
+    }
+}
+
+#[cfg(windows)]
+fn is_cmd_command(command: &str) -> bool {
+    let lower = command.to_ascii_lowercase();
+    lower == "cmd" || lower == "cmd.exe" || lower.ends_with("\\cmd.exe") || lower.ends_with("/cmd.exe")
+}
+
+#[cfg(windows)]
+fn cmd_quote(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
+}
+
+#[cfg(windows)]
+fn windows_cmd_path(path: &Path) -> String {
+    strip_windows_verbatim_prefix(&path.to_string_lossy())
+}
+
+#[cfg(windows)]
+fn strip_windows_verbatim_prefix(value: &str) -> String {
+    if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{rest}")
+    } else if let Some(rest) = value.strip_prefix(r"\\?\") {
+        rest.to_string()
+    } else {
+        value.to_string()
+    }
+}
+
 fn default_shell() -> String {
     #[cfg(windows)]
     {
-        if command_resolver::resolve_command("powershell.exe").found {
-            "powershell.exe".to_string()
-        } else {
-            "cmd.exe".to_string()
-        }
+        "cmd.exe".to_string()
     }
 
     #[cfg(not(windows))]
@@ -418,5 +564,13 @@ fn now_string() -> String {
 }
 
 fn path_to_string(path: &Path) -> String {
-    path.to_string_lossy().to_string()
+    #[cfg(windows)]
+    {
+        return strip_windows_verbatim_prefix(&path.to_string_lossy());
+    }
+
+    #[cfg(not(windows))]
+    {
+        path.to_string_lossy().to_string()
+    }
 }

@@ -71,14 +71,14 @@ export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
         disableStdin: false,
         fontFamily: "JetBrains Mono, SFMono-Regular, Consolas, monospace",
         fontSize: 13,
-        lineHeight: 1.35,
+        lineHeight: 1.4,
         scrollback: 2000,
         theme: {
-          background: "#0b1019",
-          foreground: "#d7dee9",
-          cursor: "#67e8f9",
-          selectionBackground: "#334155",
-          black: "#020617",
+          background: "#160f2e",
+          foreground: "#efe9ff",
+          cursor: "#c4b5fd",
+          selectionBackground: "#4c1d95",
+          black: "#10091f",
           red: "#fb7185",
           green: "#34d399",
           yellow: "#fbbf24",
@@ -137,7 +137,7 @@ export const XTermSurface = forwardRef<XTermSurfaceHandle, XTermSurfaceProps>(
 
     return (
       <div
-        className="h-full min-h-0 w-full overflow-hidden bg-[#0b1019] px-4 py-3"
+        className="h-full min-h-0 w-full overflow-hidden bg-[#160f2e] px-4 py-3 font-mono"
         ref={containerRef}
       />
     );

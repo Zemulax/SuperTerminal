@@ -26,45 +26,46 @@ export function ToolSwitcher() {
   return (
     <div className="flex min-w-0 items-center gap-2">
       <div className="hidden min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-md border border-border bg-white p-1 xl:flex">
-        {adapters.map((adapter) => (
-          <button
-            key={adapter.definition.id}
-            type="button"
-            onClick={() => setActiveTool(adapter.definition.id)}
-            className={cn(
-              "flex h-8 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium text-slate-600 transition-colors",
-              activeToolId === adapter.definition.id
-                ? "bg-slate-950 text-white"
-                : "hover:bg-slate-100 hover:text-slate-950",
-            )}
-            title={`${adapter.definition.name}: ${getToolStatusLabel(adapter.status)}. ${adapter.message ?? ""}`}
-          >
-            <span>{getCompactToolName(adapter.definition.name)}</span>
-            <span
+        {adapters.map((adapter) => {
+          const isRunning =
+            sessionStatus === "active" && runningToolId === adapter.definition.id;
+
+          return (
+            <button
+              key={adapter.definition.id}
+              type="button"
+              onClick={() => setActiveTool(adapter.definition.id)}
               className={cn(
-                "rounded border px-1 py-0.5 font-mono text-[10px] leading-none",
+                "flex h-8 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium text-slate-600 transition-colors",
                 activeToolId === adapter.definition.id
-                  ? "border-white/20 bg-white/10 text-white"
-                  : "border-slate-200 bg-slate-50 text-slate-600",
+                  ? "bg-slate-950 text-white"
+                  : "hover:bg-slate-100 hover:text-slate-950",
               )}
-              aria-label={getToolStatusLabel(adapter.status)}
+              title={`${adapter.definition.name}: ${getToolStatusLabel(adapter.status)}. ${adapter.message ?? ""}`}
             >
-              {getToolStatusIcon(adapter.status)}
-            </span>
-            {sessionStatus === "active" && runningToolId === adapter.definition.id ? (
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em]",
-                  activeToolId === adapter.definition.id
-                    ? "bg-emerald-400/20 text-emerald-100"
-                    : "bg-emerald-50 text-emerald-700",
-                )}
-              >
-                running
-              </span>
-            ) : null}
-          </button>
-        ))}
+              <span>{getCompactToolName(adapter.definition.name)}</span>
+              {isRunning ? (
+                <span
+                  className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_0_2px_rgba(52,211,153,0.2)]"
+                  aria-label="Running"
+                  title="Running"
+                />
+              ) : (
+                <span
+                  className={cn(
+                    "rounded border px-1 py-0.5 font-mono text-[10px] leading-none",
+                    activeToolId === adapter.definition.id
+                      ? "border-white/20 bg-white/10 text-white"
+                      : "border-slate-200 bg-slate-50 text-slate-600",
+                  )}
+                  aria-label={getToolStatusLabel(adapter.status)}
+                >
+                  {getToolStatusIcon(adapter.status)}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-2 rounded-md border border-border bg-white px-3 py-2 xl:hidden">

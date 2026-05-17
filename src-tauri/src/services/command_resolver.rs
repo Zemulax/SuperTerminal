@@ -117,21 +117,63 @@ pub fn safe_working_directory(path: Option<&str>) -> Result<PathBuf, String> {
         let resolved = PathBuf::from(value)
             .canonicalize()
             .map_err(|error| format!("Unable to resolve working directory: {error}"))?;
-        if resolved.is_dir() {
-            return Ok(resolved);
+        if resolved.is_dir() && !is_unsafe_windows_directory(&resolved) {
+            return Ok(normalize_windows_path(resolved));
         }
     }
 
     if let Some(home) = home_dir() {
         if home.is_dir() {
-            return home
+            let resolved = home
                 .canonicalize()
-                .map_err(|error| format!("Unable to resolve home directory: {error}"));
+                .map_err(|error| format!("Unable to resolve home directory: {error}"))?;
+            return Ok(normalize_windows_path(resolved));
         }
     }
 
     env::current_dir()
         .map_err(|error| format!("Unable to determine a safe working directory: {error}"))
+}
+
+pub fn normalize_windows_path(path: PathBuf) -> PathBuf {
+    #[cfg(windows)]
+    {
+        PathBuf::from(strip_windows_verbatim_prefix(&path.to_string_lossy()))
+    }
+
+    #[cfg(not(windows))]
+    {
+        path
+    }
+}
+
+pub fn is_unsafe_windows_directory(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        let normalized = strip_windows_verbatim_prefix(&path.to_string_lossy())
+            .replace('/', "\\")
+            .to_ascii_lowercase();
+        normalized == r"c:\windows"
+            || normalized.starts_with(r"c:\windows\system32")
+            || normalized.starts_with(r"c:\windows\syswow64")
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        false
+    }
+}
+
+#[cfg(windows)]
+fn strip_windows_verbatim_prefix(value: &str) -> String {
+    if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{rest}")
+    } else if let Some(rest) = value.strip_prefix(r"\\?\") {
+        rest.to_string()
+    } else {
+        value.to_string()
+    }
 }
 
 fn found(

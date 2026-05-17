@@ -158,6 +158,12 @@ pub fn build_tool_launch_spec(
     let working_directory = PathBuf::from(&request.project_path)
         .canonicalize()
         .map_err(|error| format!("Unable to resolve project path: {error}"))?;
+    if command_resolver::is_unsafe_windows_directory(&working_directory) {
+        return Err(
+            "Refusing to launch a tool from a Windows system directory. Choose a project folder or user directory."
+                .to_string(),
+        );
+    }
     let preview = build_preview(command, &request.args, &working_directory);
 
     Ok(ToolLaunchSpecRecord {
