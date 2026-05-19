@@ -11,6 +11,8 @@ use crate::services::{command_resolver, file_scanner};
 
 const TOOL_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 const OUTPUT_LIMIT: usize = 600;
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,10 +87,12 @@ pub fn check_tool(request: CheckToolRequest) -> Result<ToolCheckResult, String> 
         .clone()
         .unwrap_or_else(|| command.to_string());
     let mut last_error = None;
+    let mut command_ran = false;
 
     for args in detection_args {
         match run_check_command(&resolved_command, &args) {
             Ok(result) => {
+                command_ran = true;
                 if result.timed_out {
                     return Ok(ToolCheckResult {
                         status: "error".to_string(),
@@ -133,6 +137,18 @@ pub fn check_tool(request: CheckToolRequest) -> Result<ToolCheckResult, String> 
         }
     }
 
+    if command_ran {
+        return Ok(ToolCheckResult {
+            status: "ready".to_string(),
+            resolved_command,
+            version: None,
+            message: last_error.unwrap_or_else(|| {
+                "Command was found, but version detection did not return a clean result."
+                    .to_string()
+            }),
+        });
+    }
+
     Ok(ToolCheckResult {
         status: "error".to_string(),
         resolved_command,
@@ -175,11 +191,15 @@ pub fn build_tool_launch_spec(
 }
 
 fn run_check_command(command: &str, args: &[String]) -> Result<ProcessResult, String> {
-    let mut child = Command::new(command)
+    let mut command_builder = Command::new(command);
+    command_builder
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    suppress_windows_console(&mut command_builder);
+
+    let mut child = command_builder
         .spawn()
         .map_err(|error| error.to_string())?;
 
@@ -240,6 +260,19 @@ fn run_check_command(command: &str, args: &[String]) -> Result<ProcessResult, St
         stderr: String::from_utf8_lossy(&stderr).to_string(),
         timed_out,
     })
+}
+
+fn suppress_windows_console(command: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = command;
+    }
 }
 
 fn useful_output(stdout: &str, stderr: &str) -> String {

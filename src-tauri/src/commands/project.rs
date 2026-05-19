@@ -3,6 +3,9 @@ use crate::services::file_scanner::{
 };
 use std::process::Command;
 
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 #[tauri::command]
 pub fn validate_project_path(path: String) -> Result<ProjectPathValidation, String> {
     Ok(file_scanner::validate_project_path(&path))
@@ -31,8 +34,12 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   [Console]::Out.Write($dialog.SelectedPath)
 }
 "#;
-        let output = Command::new("powershell.exe")
-            .args(["-NoProfile", "-STA", "-Command", script])
+        let mut command = Command::new("powershell.exe");
+        command
+            .args(["-NoProfile", "-STA", "-WindowStyle", "Hidden", "-Command", script]);
+        suppress_windows_console(&mut command);
+
+        let output = command
             .output()
             .map_err(|error| format!("Unable to open folder picker: {error}"))?;
 
@@ -56,6 +63,19 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     #[cfg(not(windows))]
     {
         Err("Native folder picker is not configured on this platform. Paste a path manually.".to_string())
+    }
+}
+
+fn suppress_windows_console(command: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = command;
     }
 }
 

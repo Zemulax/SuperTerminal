@@ -14,6 +14,8 @@ use crate::services::{
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 300;
 const OUTPUT_LIMIT: usize = 20_000;
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -149,12 +151,16 @@ fn run_process(
         .as_deref()
         .unwrap_or(executable);
 
-    let mut child = Command::new(executable_path)
+    let mut command = Command::new(executable_path);
+    command
         .args(&validation.args)
         .current_dir(working_directory)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    suppress_windows_console(&mut command);
+
+    let mut child = command
         .spawn()
         .map_err(|error| {
             format!(
@@ -215,6 +221,19 @@ fn run_process(
         stderr: String::from_utf8_lossy(&stderr).to_string(),
         timed_out,
     })
+}
+
+fn suppress_windows_console(command: &mut Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = command;
+    }
 }
 
 fn resolve_working_directory(path: Option<String>) -> Result<PathBuf, String> {
