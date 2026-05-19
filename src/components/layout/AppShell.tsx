@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { ProjectSidebar } from "@/components/layout/ProjectSidebar";
-import { StatusPanel } from "@/components/layout/StatusPanel";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 
@@ -17,7 +16,6 @@ export function AppShell() {
             <ProjectSidebar />
             <main className="flex min-w-0 flex-1 flex-col">
               <TerminalShell />
-              <StatusPanel />
             </main>
           </div>
           <SettingsPanel

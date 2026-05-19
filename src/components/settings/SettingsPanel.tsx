@@ -88,7 +88,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <div className="flex h-16 items-center justify-between border-b border-border px-5">
         <div>
           <div className="text-sm font-semibold text-slate-950">Settings</div>
-          <div className="text-xs text-slate-500">Phase 6 launch profiles</div>
+          <div className="text-xs text-slate-500">Tools, terminal, and privacy</div>
         </div>
         <Button aria-label="Close settings" onClick={onClose} size="icon" variant="ghost">
           <X className="h-4 w-4" aria-hidden />
