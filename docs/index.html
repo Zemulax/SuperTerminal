@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperTerminal | One terminal surface for your AI coding agents</title>
+  <meta name="description" content="Launch, prompt, and track AI coding agents like Codex, Claude, OpenCode, OpenClaude, Grok-compatible tools, and custom CLIs from one local desktop terminal.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="#" class="logo">&gt;_ SuperTerminal</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#privacy">Privacy</a>
+        <a href="https://github.com/Zemulax/SuperTerminal/releases" target="_blank">Download</a>
+        <a href="https://github.com/Zemulax/SuperTerminal" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <h1 class="hero-title">One terminal surface for your AI coding agents.</h1>
+      <p class="hero-subtitle">Launch, prompt, and track AI coding CLIs from one local desktop app. Built for developers who use tools like Codex, Claude, OpenCode, OpenClaude, Grok-compatible tools, and custom CLIs.</p>
+      
+      <div class="hero-actions">
+        <a href="https://github.com/Zemulax/SuperTerminal/releases" class="btn btn-primary" target="_blank">Download Alpha</a>
+        <a href="https://github.com/Zemulax/SuperTerminal" class="btn btn-secondary" target="_blank">View on GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="preview-section">
+    <div class="container">
+      <div class="terminal-mockup">
+        <div class="terminal-header">
+          <div class="traffic-lights">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+          </div>
+          <div class="terminal-title">superterminal</div>
+        </div>
+        <div class="terminal-body">
+          <div class="line"><span class="prompt">$ superterminal</span></div>
+          <div class="line">Project loaded: <span class="highlight">budget-cargo</span></div>
+          <div class="line">Agent selected: <span class="highlight-alt">Codex CLI</span></div>
+          <div class="line">Context: generated from project files</div>
+          <div class="line">Mode: local PTY</div>
+          <br>
+          <div class="line dim">&gt; Launching agent...</div>
+          <div class="line dim">&gt; Context injection requires confirmation.</div>
+          <div class="line dim">&gt; Session history saved locally.</div>
+          <div class="line"><span class="cursor">_</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="features-section">
+    <div class="container">
+      <h2 class="section-title">Features</h2>
+      <div class="features-grid">
+        <div class="card">
+          <h3>Agent profiles</h3>
+          <p>Configure Codex, Claude, OpenCode, OpenClaude, Grok-compatible tools, and custom CLIs.</p>
+        </div>
+        <div class="card">
+          <h3>Embedded terminal</h3>
+          <p>Run local shells and agent CLIs from one focused interface.</p>
+        </div>
+        <div class="card">
+          <h3>Project context</h3>
+          <p>Open a folder, inspect files, and generate project-aware context.</p>
+        </div>
+        <div class="card">
+          <h3>Context injection</h3>
+          <p>Send context through clipboard, prompt files, or stdin with confirmation.</p>
+        </div>
+        <div class="card">
+          <h3>Guided installation</h3>
+          <p>Show install commands clearly and require confirmation before running them.</p>
+        </div>
+        <div class="card">
+          <h3>Session history</h3>
+          <p>Track sessions and optional transcript previews locally.</p>
+        </div>
+        <div class="card">
+          <h3>Local-first secrets</h3>
+          <p>Per-tool environment variables stay local and are passed only to selected tool processes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how-it-works-section">
+    <div class="container">
+      <h2 class="section-title">How It Works</h2>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3>Open a project</h3>
+        </div>
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3>Select an agent</h3>
+        </div>
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3>Generate context</h3>
+        </div>
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <h3>Launch, inject, and track the session</h3>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="not-section">
+    <div class="container">
+      <div class="card warning-card">
+        <h2 class="section-title">What SuperTerminal Is Not</h2>
+        <ul class="not-list">
+          <li>A replacement for Codex, Claude, OpenCode, OpenClaude, Grok, or any other agent.</li>
+          <li>A distributor or bundled package of third-party CLI tools.</li>
+          <li>A cloud agent platform.</li>
+          <li>An API key broker.</li>
+          <li>A replacement for your existing terminal.</li>
+          <li>A tool that silently installs software or runs commands without confirmation.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy" class="privacy-section">
+    <div class="container">
+      <h2 class="section-title">Security & Privacy</h2>
+      <p class="privacy-lead">SuperTerminal is local-first.</p>
+      <ul class="privacy-list">
+        <li>SuperTerminal does not bundle third-party CLI tools.</li>
+        <li>SuperTerminal does not manage cloud accounts or OAuth.</li>
+        <li>API keys are stored locally and only passed to the selected tool process when configured by the user.</li>
+        <li>Project context is not uploaded by SuperTerminal.</li>
+        <li>Tool installation commands are shown clearly and require user confirmation.</li>
+        <li>SuperTerminal does not intentionally include API keys in prompts, prompt files, diagnostics, or transcript previews.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="download-section">
+    <div class="container">
+      <h2 class="section-title">Ready to try the alpha?</h2>
+      <p>Download the latest build from GitHub Releases.</p>
+      <div class="hero-actions center">
+        <a href="https://github.com/Zemulax/SuperTerminal/releases" class="btn btn-primary" target="_blank">Download Alpha</a>
+        <a href="https://github.com/Zemulax/SuperTerminal" class="btn btn-secondary" target="_blank">View Source</a>
+      </div>
+      <p class="disclaimer">Early builds may not be code-signed yet, so your operating system may show a warning.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container footer-content">
+      <div class="footer-brand">&gt;_ SuperTerminal</div>
+      <div class="footer-links">
+        <span>Apache License 2.0</span>
+        <a href="https://github.com/Zemulax/SuperTerminal" target="_blank">GitHub</a>
+      </div>
+      <div class="footer-note">Built local-first for developers using AI coding agents.</div>
+    </div>
+  </footer>
+</body>
+</html>
