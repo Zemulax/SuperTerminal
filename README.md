@@ -6,6 +6,8 @@
 
 One terminal surface for your AI coding agents.
 
+![SuperTerminal desktop app screenshot](docs/assets/superterminal-screenshot.png)
+
 ## What is SuperTerminal?
 
 SuperTerminal is a local-first desktop app that gives developers one common terminal surface for AI coding agents and CLI tools such as Codex CLI, Claude Code/CLI, OpenCode, OpenClaude-compatible tools, Grok-compatible tools, and custom CLIs.
