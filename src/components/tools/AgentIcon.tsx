@@ -48,12 +48,24 @@ export function AgentIcon({
   size = 22,
 }: AgentIconProps) {
   const Icon = iconKey ? lobeIcons[iconKey] : undefined;
+  const CustomIcon = iconKey ? customIcons[iconKey] : undefined;
 
   if (Icon) {
     const BrandIcon = muted ? Icon.mono : Icon.color;
 
     return (
       <BrandIcon
+        aria-hidden
+        className={cn(muted && "text-slate-400", className)}
+        size={size}
+        title={name}
+      />
+    );
+  }
+
+  if (CustomIcon) {
+    return (
+      <CustomIcon
         aria-hidden
         className={cn(muted && "text-slate-400", className)}
         size={size}
@@ -69,5 +81,77 @@ export function AgentIcon({
     >
       {getAgentIconLabel(iconKey, name)}
     </span>
+  );
+}
+
+const customIcons: Record<string, LobeIcon | undefined> = {
+  codebuff: CodebuffMark,
+  freebuff: CodebuffMark,
+  openclaude: GitClaudeMark,
+};
+
+function GitClaudeMark({
+  className,
+  size = 22,
+  title,
+}: {
+  className?: string;
+  size?: number | string;
+  title?: string;
+}) {
+  return (
+    <svg
+      aria-hidden={!title}
+      className={className}
+      fill="none"
+      height={size}
+      role={title ? "img" : undefined}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.2"
+      viewBox="0 0 24 24"
+      width={size}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M12 12v5.2" />
+      <path d="M7 7v4.2l4 4" />
+      <path d="M17 7v4.2l-4 4" />
+      <path d="M12 12l5-5" />
+      <circle cx="7" cy="5" r="2.1" />
+      <circle cx="17" cy="5" r="2.1" />
+      <circle cx="12" cy="11.7" r="2" />
+      <path d="M12 17.2l3.4 2v3.8L12 25l-3.4-2v-3.8l3.4-2Z" transform="translate(0 -2)" />
+      <path d="M15.4 19.4h2.1" />
+      <path d="M15.4 22.1h2.1" />
+    </svg>
+  );
+}
+
+function CodebuffMark({
+  className,
+  size = 22,
+  title,
+}: {
+  className?: string;
+  size?: number | string;
+  title?: string;
+}) {
+  return (
+    <svg
+      aria-hidden={!title}
+      className={className}
+      fill="currentColor"
+      height={size}
+      role={title ? "img" : undefined}
+      viewBox="0 0 24 24"
+      width={size}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M7.2 2.2c.5 3.2 2 4.9 4.6 5.4.3.1.3.5 0 .6-2.6.5-4.1 2.2-4.6 5.4-.1.3-.5.3-.6 0-.5-3.2-2-4.9-4.6-5.4-.3-.1-.3-.5 0-.6 2.6-.5 4.1-2.2 4.6-5.4.1-.3.5-.3.6 0Z" />
+      <rect height="2.4" rx="0.4" width="9" x="12" y="12.3" />
+    </svg>
   );
 }
