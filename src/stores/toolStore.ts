@@ -49,7 +49,7 @@ type ToolState = {
     profile: Partial<ToolLaunchProfile>,
   ) => void;
   resetLaunchProfile: (adapterId: ToolAdapterId) => void;
-  checkTool: (adapterId: ToolAdapterId) => Promise<void>;
+  checkTool: (adapterId: ToolAdapterId) => Promise<ToolCheckResult | undefined>;
   checkAllTools: () => Promise<void>;
   updateToolConfig: (
     adapterId: ToolAdapterId,
@@ -432,7 +432,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
     if (!adapter) {
       set({ error: `Unknown agent: ${adapterId}` });
-      return;
+      return undefined;
     }
 
     if (
@@ -451,7 +451,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
         );
         return { adapters, tools: addedTools(adapters) };
       });
-      return;
+      return undefined;
     }
 
     set((state) => {
@@ -481,6 +481,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
         );
         return { adapters, tools: addedTools(adapters) };
       });
+      return result;
     } catch (error) {
       set((state) => {
         const adapters = state.adapters.map((candidate): ToolAdapterState =>
@@ -495,6 +496,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
         );
         return { adapters, tools: addedTools(adapters), error: String(error) };
       });
+      return undefined;
     }
   },
   checkAllTools: async () => {
@@ -559,6 +561,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
     get().updateToolConfig(adapterId, {
       enabled: true,
       commandOverride: undefined,
+      installCommandOverride: undefined,
+      uninstallCommandOverride: undefined,
     });
   },
   buildLaunchSpec: async (adapterId, projectPath) => {

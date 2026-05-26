@@ -60,6 +60,7 @@ export type ToolAdapterConfig = {
   pinnedToRibbon?: boolean;
   commandOverride?: string;
   installCommandOverride?: string;
+  uninstallCommandOverride?: string;
 };
 
 export type TerminalPreferences = {
