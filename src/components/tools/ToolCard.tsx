@@ -1,18 +1,20 @@
 import {
   Clipboard,
   CircleHelp,
+  ChevronDown,
   Download,
+  Pin,
   RotateCcw,
   Save,
   Search,
   ShieldAlert,
-  TerminalSquare,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AgentIcon } from "@/components/tools/AgentIcon";
 import { LaunchProfileEditor } from "@/components/tools/LaunchProfileEditor";
 import { ToolEnvironmentEditor } from "@/components/tools/ToolEnvironmentEditor";
 import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
@@ -25,6 +27,7 @@ import type {
   InstallCommandValidationResult,
   ToolAdapterState,
 } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type ToolCardProps = {
   tool: ToolAdapterState;
@@ -35,9 +38,15 @@ export function ToolCard({ tool }: ToolCardProps) {
   const checkTool = useToolStore((state) => state.checkTool);
   const updateToolConfig = useToolStore((state) => state.updateToolConfig);
   const resetToolConfig = useToolStore((state) => state.resetToolConfig);
+  const pinAgent = useToolStore((state) => state.pinAgent);
+  const unpinAgent = useToolStore((state) => state.unpinAgent);
+  const removeAgent = useToolStore((state) => state.removeAgentFromSuperTerminal);
   const buildLaunchSpec = useToolStore((state) => state.buildLaunchSpec);
+  const storedProfile = useToolStore(
+    (state) => state.launchProfilesByAdapterId[tool.definition.id],
+  );
   const getLaunchProfile = useToolStore((state) => state.getLaunchProfile);
-  const launchProfile = getLaunchProfile(tool.definition.id);
+  const launchProfile = storedProfile ?? getLaunchProfile(tool.definition.id);
   const lastLaunchSpec = useToolStore((state) => state.lastLaunchSpec);
   const validateInstallCommand = useInstallStore(
     (state) => state.validateInstallCommand,
@@ -47,6 +56,9 @@ export function ToolCard({ tool }: ToolCardProps) {
     (state) => state.validationByAdapter[tool.definition.id],
   );
   const installHistory = useInstallStore((state) => state.installHistory);
+  const activeInstallAttempt = useInstallStore(
+    (state) => state.activeInstallAttempt,
+  );
   const isValidating = useInstallStore((state) => state.isValidating);
   const isRunning = useInstallStore((state) => state.isRunning);
   const [commandOverride, setCommandOverride] = useState(
@@ -58,6 +70,7 @@ export function ToolCard({ tool }: ToolCardProps) {
   const [pendingValidation, setPendingValidation] =
     useState<InstallCommandValidationResult>();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [commandDiagnostics, setCommandDiagnostics] =
     useState<CommandResolutionDiagnostics>();
@@ -77,11 +90,17 @@ export function ToolCard({ tool }: ToolCardProps) {
     tool.definition.installCommandPreview ||
     "Configure manually.";
   const isChecking = tool.status === "checking";
+  const isPinned = Boolean(tool.config.pinnedToRibbon);
   const needsProjectForPreview =
     launchProfile.workingDirectoryMode === "project_root" && !selectedProject;
   const latestInstall = installHistory.find(
     (attempt) => attempt.adapterId === tool.definition.id,
   );
+  const activeInstall =
+    activeInstallAttempt?.adapterId === tool.definition.id &&
+    activeInstallAttempt.status === "running"
+      ? activeInstallAttempt
+      : undefined;
 
   const copyInstallCommand = () => {
     void navigator.clipboard?.writeText(installPreview);
@@ -138,21 +157,76 @@ export function ToolCard({ tool }: ToolCardProps) {
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-100 text-slate-700">
-            <TerminalSquare className="h-4 w-4" aria-hidden />
+        <button
+          className="flex min-w-0 flex-1 gap-3 text-left"
+          onClick={() => setExpanded((value) => !value)}
+          type="button"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+            <AgentIcon
+              iconKey={tool.definition.iconKey}
+              muted={["missing", "not_checked", "error"].includes(tool.status)}
+              name={tool.definition.name}
+              size={22}
+            />
           </div>
           <div className="min-w-0">
-            <div className="font-medium text-slate-950">
-              {tool.definition.name}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-slate-950">
+                {tool.definition.name}
+              </span>
+              <ToolStatusBadge status={tool.status} />
+              {isPinned ? (
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                  pinned
+                </span>
+              ) : null}
             </div>
-            <p className="mt-1 text-sm leading-5 text-slate-500">
-              {tool.definition.description}
-            </p>
+            <div className="mt-1 truncate font-mono text-xs text-slate-500">
+              {tool.resolvedCommand}
+            </div>
           </div>
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            disabled={isChecking}
+            onClick={() => void checkTool(tool.definition.id)}
+            size="sm"
+            variant="ghost"
+          >
+            <Search className="h-4 w-4" aria-hidden />
+            {isChecking ? "Checking" : "Check"}
+          </Button>
+          <Button
+            aria-label={isPinned ? "Unpin agent" : "Pin agent"}
+            onClick={() =>
+              isPinned
+                ? unpinAgent(tool.definition.id)
+                : pinAgent(tool.definition.id)
+            }
+            size="icon"
+            variant="ghost"
+          >
+            <Pin className={cn("h-4 w-4", isPinned && "fill-current")} aria-hidden />
+          </Button>
+          <Button
+            aria-label={expanded ? "Collapse agent profile" : "Expand agent profile"}
+            onClick={() => setExpanded((value) => !value)}
+            size="icon"
+            variant="ghost"
+          >
+            <ChevronDown
+              className={cn("h-4 w-4 transition", expanded && "rotate-180")}
+              aria-hidden
+            />
+          </Button>
         </div>
-        <ToolStatusBadge status={tool.status} />
       </div>
+      {!expanded ? null : (
+        <>
+          <p className="mt-3 text-sm leading-5 text-slate-500">
+            {tool.definition.description}
+          </p>
 
       <div className="mt-4 grid gap-3 text-xs">
         <div>
@@ -304,6 +378,31 @@ export function ToolCard({ tool }: ToolCardProps) {
         </div>
       ) : null}
 
+      {activeInstall ? (
+        <div className="mt-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
+                Install running
+              </div>
+              <div className="mt-1 text-xs leading-5 text-violet-900">
+                SuperTerminal is running the confirmed install command in the
+                background. Output will appear when the command completes.
+              </div>
+            </div>
+            <span className="rounded bg-white px-2 py-1 text-[11px] font-medium text-violet-700">
+              running
+            </span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-violet-100">
+            <div className="h-full w-1/3 animate-[install-progress_1.2s_ease-in-out_infinite] rounded-full bg-violet-500" />
+          </div>
+          <pre className="mt-2 whitespace-pre-wrap rounded border border-violet-100 bg-white/80 p-2 font-mono text-[11px] text-violet-950">
+            {activeInstall.command}
+          </pre>
+        </div>
+      ) : null}
+
       {latestInstall ? (
         <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
@@ -422,7 +521,16 @@ export function ToolCard({ tool }: ToolCardProps) {
         >
           Build Launch Preview
         </Button>
+        <Button
+          onClick={() => removeAgent(tool.definition.id)}
+          size="sm"
+          variant="ghost"
+        >
+          Remove Agent
+        </Button>
       </div>
+        </>
+      )}
 
       {confirmOpen && pendingValidation ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">

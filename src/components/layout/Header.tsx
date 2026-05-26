@@ -4,10 +4,11 @@ import { ToolSwitcher } from "@/components/tools/ToolSwitcher";
 import { useProjectStore } from "@/stores/projectStore";
 
 type HeaderProps = {
+  onOpenCatalogue: () => void;
   onOpenSettings: () => void;
 };
 
-export function Header({ onOpenSettings }: HeaderProps) {
+export function Header({ onOpenCatalogue, onOpenSettings }: HeaderProps) {
   const openProjectWithPicker = useProjectStore(
     (state) => state.openProjectWithPicker,
   );
@@ -25,7 +26,7 @@ export function Header({ onOpenSettings }: HeaderProps) {
               SuperTerminal
             </div>
             <div className="truncate text-xs text-slate-500">
-              One terminal surface for your AI coding CLIs.
+              One terminal surface for your AI coding agents.
             </div>
           </div>
         </div>
@@ -34,12 +35,12 @@ export function Header({ onOpenSettings }: HeaderProps) {
       </div>
 
       <div className="hidden min-w-0 flex-1 justify-center xl:flex">
-        <ToolSwitcher />
+        <ToolSwitcher onOpenCatalogue={onOpenCatalogue} />
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
         <div className="xl:hidden">
-          <ToolSwitcher />
+          <ToolSwitcher onOpenCatalogue={onOpenCatalogue} />
         </div>
         <Button
           disabled={isOpeningProject}

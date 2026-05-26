@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { defaultToolAdapters } from "@/lib/mockData";
 import { useSecretEnvStore } from "@/stores/secretEnvStore";
 import type {
+  AgentCategory,
   ToolAdapterConfig,
   ToolAdapterId,
   ToolAdapterState,
@@ -14,16 +15,34 @@ import type {
 
 const CONFIG_STORAGE_KEY = "superterminal.toolAdapterConfigs.v1";
 const LAUNCH_PROFILE_STORAGE_KEY = "superterminal.toolLaunchProfiles.v1";
+const DEFAULT_ADDED_AGENT_IDS = new Set([
+  "codex",
+  "claude",
+  "opencode",
+  "openclaude",
+  "grok",
+]);
 
 type ToolState = {
   adapters: ToolAdapterState[];
   tools: ToolAdapterState[];
   activeToolId: ToolAdapterId;
   launchProfilesByAdapterId: Record<string, ToolLaunchProfile>;
+  searchQuery: string;
+  selectedCategory: AgentCategory | "all";
   isCheckingAll: boolean;
   lastLaunchSpec?: ToolLaunchSpec;
   error?: string;
   setActiveTool: (toolId: ToolAdapterId) => void;
+  setCatalogueSearchQuery: (query: string) => void;
+  setCatalogueCategory: (category: AgentCategory | "all") => void;
+  addAgentToSuperTerminal: (agentId: ToolAdapterId) => void;
+  removeAgentFromSuperTerminal: (agentId: ToolAdapterId) => void;
+  pinAgent: (agentId: ToolAdapterId) => void;
+  unpinAgent: (agentId: ToolAdapterId) => void;
+  isAgentAdded: (agentId: ToolAdapterId) => boolean;
+  getPinnedAgents: () => ToolAdapterState[];
+  getCatalogueFiltered: () => ToolAdapterState[];
   getLaunchProfile: (adapterId: ToolAdapterId) => ToolLaunchProfile;
   updateLaunchProfile: (
     adapterId: ToolAdapterId,
@@ -66,7 +85,7 @@ function saveConfigs(adapters: ToolAdapterState[]) {
     );
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(configs));
   } catch {
-    // Local storage can be unavailable in some WebView policies. Runtime state still works.
+    // Runtime state still works if localStorage is unavailable.
   }
 }
 
@@ -89,8 +108,16 @@ function saveLaunchProfiles(profiles: Record<string, ToolLaunchProfile>) {
     }
     localStorage.setItem(LAUNCH_PROFILE_STORAGE_KEY, JSON.stringify(profiles));
   } catch {
-    // Local storage can be unavailable in some WebView policies. Runtime state still works.
+    // Runtime state still works if localStorage is unavailable.
   }
+}
+
+function isAdded(adapter: ToolAdapterState) {
+  return Boolean(adapter.config.addedToSuperTerminal);
+}
+
+function addedTools(adapters: ToolAdapterState[]) {
+  return adapters.filter(isAdded);
 }
 
 function defaultLaunchProfile(
@@ -118,10 +145,7 @@ function initialLaunchProfiles(adapters: ToolAdapterState[]) {
       return [
         adapter.definition.id,
         {
-          ...defaultLaunchProfile(
-            adapter.definition.id,
-            adapter.resolvedCommand,
-          ),
+          ...defaultLaunchProfile(adapter.definition.id, adapter.resolvedCommand),
           ...existing,
           adapterId: adapter.definition.id,
           command: adapter.resolvedCommand,
@@ -135,10 +159,16 @@ function initialAdapters(): ToolAdapterState[] {
   const configs = loadConfigs();
 
   return defaultToolAdapters.map((definition) => {
-    const config: ToolAdapterConfig = configs[definition.id] ?? {
+    const defaultAdded = DEFAULT_ADDED_AGENT_IDS.has(definition.id);
+    const storedConfig = configs[definition.id];
+    const config: ToolAdapterConfig = {
+      ...storedConfig,
       adapterId: definition.id,
-      enabled: true,
+      enabled: storedConfig?.enabled ?? true,
+      addedToSuperTerminal: storedConfig?.addedToSuperTerminal ?? defaultAdded,
+      pinnedToRibbon: storedConfig?.pinnedToRibbon ?? defaultAdded,
     };
+
     const resolvedCommand =
       config.commandOverride?.trim() || definition.defaultCommand;
     const needsSetup = definition.id === "generic" && !config.commandOverride?.trim();
@@ -149,7 +179,7 @@ function initialAdapters(): ToolAdapterState[] {
       status: needsSetup ? "needs_setup" : "not_checked",
       resolvedCommand,
       message: needsSetup
-        ? "Generic CLI requires a command override before detection."
+        ? "Generic Custom Agent requires a command override before detection."
         : "Not checked yet.",
     };
   });
@@ -216,13 +246,130 @@ const initialProfileState = initialLaunchProfiles(initialAdapterState);
 
 export const useToolStore = create<ToolState>((set, get) => ({
   adapters: initialAdapterState,
-  tools: initialAdapterState,
-  activeToolId: "codex",
+  tools: addedTools(initialAdapterState),
+  activeToolId: addedTools(initialAdapterState)[0]?.definition.id ?? "codex",
   launchProfilesByAdapterId: initialProfileState,
+  searchQuery: "",
+  selectedCategory: "all",
   isCheckingAll: false,
   lastLaunchSpec: undefined,
   error: undefined,
   setActiveTool: (toolId) => set({ activeToolId: toolId }),
+  setCatalogueSearchQuery: (query) => set({ searchQuery: query }),
+  setCatalogueCategory: (category) => set({ selectedCategory: category }),
+  addAgentToSuperTerminal: (agentId) => {
+    set((state) => {
+      const adapters = state.adapters.map((adapter): ToolAdapterState =>
+        adapter.definition.id === agentId
+          ? {
+              ...adapter,
+              config: {
+                ...adapter.config,
+                addedToSuperTerminal: true,
+                pinnedToRibbon: true,
+              },
+            }
+          : adapter,
+      );
+      saveConfigs(adapters);
+      return { adapters, tools: addedTools(adapters), activeToolId: agentId };
+    });
+  },
+  removeAgentFromSuperTerminal: (agentId) => {
+    set((state) => {
+      const adapters = state.adapters.map((adapter): ToolAdapterState =>
+        adapter.definition.id === agentId
+          ? {
+              ...adapter,
+              config: {
+                ...adapter.config,
+                addedToSuperTerminal: false,
+                pinnedToRibbon: false,
+              },
+            }
+          : adapter,
+      );
+      const tools = addedTools(adapters);
+      const activeStillAdded = tools.some(
+        (adapter) => adapter.definition.id === state.activeToolId,
+      );
+      saveConfigs(adapters);
+      return {
+        adapters,
+        tools,
+        activeToolId: activeStillAdded
+          ? state.activeToolId
+          : tools[0]?.definition.id ?? state.activeToolId,
+      };
+    });
+  },
+  pinAgent: (agentId) => {
+    set((state) => {
+      const adapters = state.adapters.map((adapter): ToolAdapterState =>
+        adapter.definition.id === agentId
+          ? {
+              ...adapter,
+              config: {
+                ...adapter.config,
+                addedToSuperTerminal: true,
+                pinnedToRibbon: true,
+              },
+            }
+          : adapter,
+      );
+      saveConfigs(adapters);
+      return { adapters, tools: addedTools(adapters) };
+    });
+  },
+  unpinAgent: (agentId) => {
+    set((state) => {
+      const adapters = state.adapters.map((adapter): ToolAdapterState =>
+        adapter.definition.id === agentId
+          ? {
+              ...adapter,
+              config: {
+                ...adapter.config,
+                pinnedToRibbon: false,
+              },
+            }
+          : adapter,
+      );
+      saveConfigs(adapters);
+      return { adapters, tools: addedTools(adapters) };
+    });
+  },
+  isAgentAdded: (agentId) =>
+    Boolean(
+      get().adapters.find((adapter) => adapter.definition.id === agentId)?.config
+        .addedToSuperTerminal,
+    ),
+  getPinnedAgents: () =>
+    get().adapters.filter(
+      (adapter) =>
+        adapter.config.addedToSuperTerminal && adapter.config.pinnedToRibbon,
+    ),
+  getCatalogueFiltered: () => {
+    const { adapters, searchQuery, selectedCategory } = get();
+    const query = searchQuery.trim().toLowerCase();
+
+    return adapters.filter((adapter) => {
+      const categoryMatch =
+        selectedCategory === "all" ||
+        adapter.definition.category === selectedCategory;
+      const searchable = [
+        adapter.definition.name,
+        adapter.definition.shortName,
+        adapter.definition.description,
+        adapter.definition.defaultCommand,
+        ...(adapter.definition.tags ?? []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return categoryMatch && (!query || searchable.includes(query));
+    });
+  },
   getLaunchProfile: (adapterId) => {
     const stored = get().launchProfilesByAdapterId[adapterId];
     if (stored) {
@@ -284,7 +431,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
     );
 
     if (!adapter) {
-      set({ error: `Unknown adapter: ${adapterId}` });
+      set({ error: `Unknown agent: ${adapterId}` });
       return;
     }
 
@@ -298,11 +445,11 @@ export const useToolStore = create<ToolState>((set, get) => ({
             ? {
                 ...candidate,
                 status: "needs_setup",
-                message: "Generic CLI requires a command override.",
+                message: "Generic Custom Agent requires a command override.",
               }
             : candidate,
         );
-        return { adapters, tools: adapters };
+        return { adapters, tools: addedTools(adapters) };
       });
       return;
     }
@@ -313,7 +460,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
           ? { ...candidate, status: "checking", message: "Checking command..." }
           : candidate,
       );
-      return { adapters, tools: adapters, error: undefined };
+      return { adapters, tools: addedTools(adapters), error: undefined };
     });
 
     try {
@@ -332,7 +479,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
               }
             : candidate,
         );
-        return { adapters, tools: adapters };
+        return { adapters, tools: addedTools(adapters) };
       });
     } catch (error) {
       set((state) => {
@@ -346,14 +493,14 @@ export const useToolStore = create<ToolState>((set, get) => ({
               }
             : candidate,
         );
-        return { adapters, tools: adapters, error: String(error) };
+        return { adapters, tools: addedTools(adapters), error: String(error) };
       });
     }
   },
   checkAllTools: async () => {
     set({ isCheckingAll: true, error: undefined });
 
-    for (const adapter of get().adapters) {
+    for (const adapter of get().tools) {
       await get().checkTool(adapter.definition.id);
     }
 
@@ -383,8 +530,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
           status: needsSetup ? "needs_setup" : "not_checked",
           version: undefined,
           message: needsSetup
-            ? "Generic CLI requires a command override."
-            : "Configuration changed. Re-check this adapter.",
+            ? "Generic Custom Agent requires a command override."
+            : "Configuration changed. Re-check this agent.",
           lastCheckedAt: undefined,
         };
       });
@@ -405,7 +552,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
       saveConfigs(adapters);
       saveLaunchProfiles(launchProfilesByAdapterId);
-      return { adapters, tools: adapters, launchProfilesByAdapterId };
+      return { adapters, tools: addedTools(adapters), launchProfilesByAdapterId };
     });
   },
   resetToolConfig: (adapterId) => {
@@ -420,12 +567,12 @@ export const useToolStore = create<ToolState>((set, get) => ({
     );
 
     if (!adapter) {
-      set({ error: `Unknown adapter: ${adapterId}` });
+      set({ error: `Unknown agent: ${adapterId}` });
       return undefined;
     }
 
     if (adapter.status !== "ready") {
-      set({ error: "Tool must be ready before building a launch spec." });
+      set({ error: "Agent must be ready before building a launch spec." });
       return undefined;
     }
 
@@ -505,6 +652,6 @@ export const useToolStore = create<ToolState>((set, get) => ({
       const adapters = state.adapters.map((adapter): ToolAdapterState =>
         adapter.definition.id === toolId ? { ...adapter, status } : adapter,
       );
-      return { adapters, tools: adapters };
+      return { adapters, tools: addedTools(adapters) };
     }),
 }));
