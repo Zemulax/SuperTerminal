@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import superterminalIcon from "@/assets/superterminal-icon.png";
 
 type BootFallbackProps = {
   error?: unknown;
@@ -18,9 +19,12 @@ export function BootFallback({ error }: BootFallbackProps) {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-6 text-slate-900">
       <div className="w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-shell">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-slate-950 font-mono text-sm font-semibold text-white">
-            ST
-          </div>
+          <img
+            alt=""
+            aria-hidden
+            className="h-10 w-10 rounded-md"
+            src={superterminalIcon}
+          />
           <div>
             <h1 className="text-base font-semibold">
               {hasError ? "SuperTerminal could not load" : "Loading SuperTerminal"}

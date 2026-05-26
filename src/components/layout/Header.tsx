@@ -2,6 +2,7 @@ import { FolderOpen, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToolSwitcher } from "@/components/tools/ToolSwitcher";
 import { useProjectStore } from "@/stores/projectStore";
+import superterminalIcon from "@/assets/superterminal-icon.png";
 
 type HeaderProps = {
   onOpenCatalogue: () => void;
@@ -18,9 +19,12 @@ export function Header({ onOpenCatalogue, onOpenSettings }: HeaderProps) {
     <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-white px-5">
       <div className="flex min-w-0 items-center gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-950 font-mono text-sm font-semibold text-white">
-            ST
-          </div>
+          <img
+            alt=""
+            aria-hidden
+            className="h-9 w-9 rounded-md"
+            src={superterminalIcon}
+          />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-slate-950">
               SuperTerminal
