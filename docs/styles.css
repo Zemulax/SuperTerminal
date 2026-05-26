@@ -109,16 +109,16 @@ a:hover {
 
 /* Hero Section */
 .hero {
-  padding: 6rem 0 4rem;
+  padding: 4.5rem 0 4rem;
   text-align: center;
 }
 
 .hero-brand-icon {
-  width: 118px;
-  height: 118px;
-  margin-bottom: 1.5rem;
-  border-radius: 28px;
-  filter: drop-shadow(0 22px 36px rgba(37, 99, 235, 0.2));
+  width: 72px;
+  height: 72px;
+  margin-bottom: 1.25rem;
+  border-radius: 18px;
+  filter: drop-shadow(0 14px 24px rgba(37, 99, 235, 0.18));
 }
 
 .hero-title {
