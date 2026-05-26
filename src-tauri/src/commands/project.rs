@@ -27,11 +27,19 @@ pub fn pick_project_folder() -> Result<Option<String>, String> {
     {
         let script = r#"
 Add-Type -AssemblyName System.Windows.Forms
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = 'Choose a SuperTerminal project folder'
-$dialog.ShowNewFolderButton = $false
+$dialog = New-Object System.Windows.Forms.OpenFileDialog
+$dialog.Title = 'Choose a SuperTerminal project folder'
+$dialog.Filter = 'All Files (*.*)|*.*'
+$dialog.CheckFileExists = $false
+$dialog.CheckPathExists = $true
+$dialog.ValidateNames = $false
+$dialog.Multiselect = $false
+$dialog.FileName = 'Select this folder'
 if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-  [Console]::Out.Write($dialog.SelectedPath)
+  $selected = [System.IO.Path]::GetDirectoryName($dialog.FileName)
+  if (-not [string]::IsNullOrWhiteSpace($selected)) {
+    [Console]::Out.Write($selected)
+  }
 }
 "#;
         let mut command = Command::new("powershell.exe");
