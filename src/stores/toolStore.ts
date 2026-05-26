@@ -272,7 +272,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
           : adapter,
       );
       saveConfigs(adapters);
-      return { adapters, tools: addedTools(adapters), activeToolId: agentId };
+      const tools = addedTools(adapters);
+      const activeIsStillAdded = tools.some(
+        (adapter) => adapter.definition.id === state.activeToolId,
+      );
+      return {
+        adapters,
+        tools,
+        activeToolId: activeIsStillAdded ? state.activeToolId : agentId,
+      };
     });
   },
   removeAgentFromSuperTerminal: (agentId) => {

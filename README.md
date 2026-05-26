@@ -58,6 +58,12 @@ SuperTerminal is local-first.
 
 Terminal output can still contain sensitive data if a tool prints it. Transcript capture is optional and should be enabled only when you are comfortable storing a bounded local preview.
 
+## Third-Party Tools
+
+SuperTerminal can detect, configure, and launch third-party CLI tools, but it does not bundle or redistribute them.
+
+Third-party tools such as Codex, Claude, OpenCode, OpenClaude, Grok-compatible tools, and others remain governed by their own licenses, terms, and security policies.
+
 ## Installation
 
 Public alpha installers will be published through GitHub Releases.
@@ -111,12 +117,26 @@ npm run tauri:build
 
 On Windows PowerShell, use `npm.cmd` instead of `npm` if script execution policy blocks npm shims.
 
+## Contributing
+
+Contributions are welcome.
+
+By submitting a contribution, you agree that your contribution is licensed under the Apache License 2.0.
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
 ## Roadmap
 
 Planned work includes broader platform testing, stronger persisted settings, improved tool-specific profiles, more reliable transcript storage controls, and packaged public alpha builds.
+
+## Branding
+
+The SuperTerminal name, logo, and branding belong to the project owner and may not be used to misrepresent unofficial builds, forks, or distributions as the official SuperTerminal project.
 
 ## License
 
 SuperTerminal is licensed under the Apache License 2.0.
 
 See [LICENSE](./LICENSE) for details.
+
+For security reporting guidance, see [SECURITY.md](./SECURITY.md).
