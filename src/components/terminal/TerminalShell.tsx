@@ -49,10 +49,15 @@ export function TerminalShell() {
   const adapters = useToolStore((state) => state.adapters);
   const activeToolId = useToolStore((state) => state.activeToolId);
   const buildLaunchSpec = useToolStore((state) => state.buildLaunchSpec);
+  const launchProfilesByAdapterId = useToolStore(
+    (state) => state.launchProfilesByAdapterId,
+  );
   const getLaunchProfile = useToolStore((state) => state.getLaunchProfile);
   const activeTool =
     adapters.find((tool) => tool.definition.id === activeToolId) ?? adapters[0];
-  const launchProfile = getLaunchProfile(activeTool.definition.id);
+  const launchProfile =
+    launchProfilesByAdapterId[activeTool.definition.id] ??
+    getLaunchProfile(activeTool.definition.id);
   const sessionStatus = useSessionStore((state) => state.sessionStatus);
   const mode = useSessionStore((state) => state.mode);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);

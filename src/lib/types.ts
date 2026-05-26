@@ -15,20 +15,52 @@ export type ToolStatus =
   | "needs_setup"
   | "error";
 
-export type ToolAdapterDefinition = {
-  id: ToolAdapterId;
+export type AgentCategory =
+  | "coding-agent"
+  | "assistant-cli"
+  | "custom"
+  | "experimental";
+
+export type AgentCatalogueEntry = {
+  id: string;
   name: string;
+  shortName: string;
   description: string;
+  category: AgentCategory;
   defaultCommand: string;
   detectionArgs: string[][];
   installCommandPreview?: string;
+  homepageUrl?: string;
+  docsUrl?: string;
+  iconKey: string;
+  tags: string[];
+  isBuiltIn: boolean;
+};
+
+export type ToolAdapterDefinition = {
+  id: ToolAdapterId;
+  name: string;
+  shortName?: string;
+  description: string;
+  category?: AgentCategory;
+  defaultCommand: string;
+  detectionArgs: string[][];
+  installCommandPreview?: string;
+  homepageUrl?: string;
+  docsUrl?: string;
+  iconKey?: string;
+  tags?: string[];
+  isBuiltIn?: boolean;
 };
 
 export type ToolAdapterConfig = {
   adapterId: ToolAdapterId;
   enabled: boolean;
+  addedToSuperTerminal?: boolean;
+  pinnedToRibbon?: boolean;
   commandOverride?: string;
   installCommandOverride?: string;
+  uninstallCommandOverride?: string;
 };
 
 export type TerminalPreferences = {

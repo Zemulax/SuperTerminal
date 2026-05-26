@@ -1,18 +1,21 @@
 import {
   Clipboard,
   CircleHelp,
+  ChevronDown,
   Download,
+  Pin,
   RotateCcw,
   Save,
   Search,
   ShieldAlert,
-  TerminalSquare,
+  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AgentIcon } from "@/components/tools/AgentIcon";
 import { LaunchProfileEditor } from "@/components/tools/LaunchProfileEditor";
 import { ToolEnvironmentEditor } from "@/components/tools/ToolEnvironmentEditor";
 import { ToolStatusBadge } from "@/components/tools/ToolStatusBadge";
@@ -25,6 +28,7 @@ import type {
   InstallCommandValidationResult,
   ToolAdapterState,
 } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type ToolCardProps = {
   tool: ToolAdapterState;
@@ -35,9 +39,15 @@ export function ToolCard({ tool }: ToolCardProps) {
   const checkTool = useToolStore((state) => state.checkTool);
   const updateToolConfig = useToolStore((state) => state.updateToolConfig);
   const resetToolConfig = useToolStore((state) => state.resetToolConfig);
+  const pinAgent = useToolStore((state) => state.pinAgent);
+  const unpinAgent = useToolStore((state) => state.unpinAgent);
+  const removeAgent = useToolStore((state) => state.removeAgentFromSuperTerminal);
   const buildLaunchSpec = useToolStore((state) => state.buildLaunchSpec);
+  const storedProfile = useToolStore(
+    (state) => state.launchProfilesByAdapterId[tool.definition.id],
+  );
   const getLaunchProfile = useToolStore((state) => state.getLaunchProfile);
-  const launchProfile = getLaunchProfile(tool.definition.id);
+  const launchProfile = storedProfile ?? getLaunchProfile(tool.definition.id);
   const lastLaunchSpec = useToolStore((state) => state.lastLaunchSpec);
   const validateInstallCommand = useInstallStore(
     (state) => state.validateInstallCommand,
@@ -47,6 +57,9 @@ export function ToolCard({ tool }: ToolCardProps) {
     (state) => state.validationByAdapter[tool.definition.id],
   );
   const installHistory = useInstallStore((state) => state.installHistory);
+  const activeInstallAttempt = useInstallStore(
+    (state) => state.activeInstallAttempt,
+  );
   const isValidating = useInstallStore((state) => state.isValidating);
   const isRunning = useInstallStore((state) => state.isRunning);
   const [commandOverride, setCommandOverride] = useState(
@@ -55,9 +68,16 @@ export function ToolCard({ tool }: ToolCardProps) {
   const [installOverride, setInstallOverride] = useState(
     tool.config.installCommandOverride ?? "",
   );
+  const [uninstallOverride, setUninstallOverride] = useState(
+    tool.config.uninstallCommandOverride ?? "",
+  );
   const [pendingValidation, setPendingValidation] =
     useState<InstallCommandValidationResult>();
+  const [pendingAction, setPendingAction] = useState<"install" | "uninstall">(
+    "install",
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [commandDiagnostics, setCommandDiagnostics] =
     useState<CommandResolutionDiagnostics>();
@@ -72,19 +92,33 @@ export function ToolCard({ tool }: ToolCardProps) {
     setInstallOverride(tool.config.installCommandOverride ?? "");
   }, [tool.config.installCommandOverride]);
 
+  useEffect(() => {
+    setUninstallOverride(tool.config.uninstallCommandOverride ?? "");
+  }, [tool.config.uninstallCommandOverride]);
+
   const installPreview =
     tool.config.installCommandOverride?.trim() ||
     tool.definition.installCommandPreview ||
     "Configure manually.";
+  const uninstallPreview =
+    tool.config.uninstallCommandOverride?.trim() ||
+    deriveUninstallCommand(installPreview) ||
+    "";
   const isChecking = tool.status === "checking";
+  const isPinned = Boolean(tool.config.pinnedToRibbon);
   const needsProjectForPreview =
     launchProfile.workingDirectoryMode === "project_root" && !selectedProject;
   const latestInstall = installHistory.find(
     (attempt) => attempt.adapterId === tool.definition.id,
   );
+  const activeInstall =
+    activeInstallAttempt?.adapterId === tool.definition.id &&
+    activeInstallAttempt.status === "running"
+      ? activeInstallAttempt
+      : undefined;
 
-  const copyInstallCommand = () => {
-    void navigator.clipboard?.writeText(installPreview);
+  const copyCommand = (command: string) => {
+    void navigator.clipboard?.writeText(command);
   };
 
   const handleValidateInstall = async () => {
@@ -113,12 +147,24 @@ export function ToolCard({ tool }: ToolCardProps) {
   const handleInstallClick = async () => {
     const result = await validateInstallCommand(tool.definition.id, installPreview);
     if (result) {
+      setPendingAction("install");
       setPendingValidation(result);
       setConfirmOpen(true);
     }
   };
 
-  const handleRunInstall = async () => {
+  const handleUninstallClick = async () => {
+    const command =
+      uninstallPreview || "Configure uninstall command manually.";
+    const result = await validateInstallCommand(tool.definition.id, command);
+    if (result) {
+      setPendingAction("uninstall");
+      setPendingValidation(result);
+      setConfirmOpen(true);
+    }
+  };
+
+  const handleRunSetupCommand = async () => {
     if (!pendingValidation?.isAllowed) {
       return;
     }
@@ -130,29 +176,84 @@ export function ToolCard({ tool }: ToolCardProps) {
       selectedProject?.path,
     );
 
-    if (result) {
-      await checkTool(tool.definition.id);
+    if (result?.status === "succeeded") {
+      await recheckToolAfterSetup(checkTool, tool.definition.id);
     }
   };
 
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-100 text-slate-700">
-            <TerminalSquare className="h-4 w-4" aria-hidden />
+        <button
+          className="flex min-w-0 flex-1 gap-3 text-left"
+          onClick={() => setExpanded((value) => !value)}
+          type="button"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+            <AgentIcon
+              iconKey={tool.definition.iconKey}
+              muted={["missing", "not_checked", "error"].includes(tool.status)}
+              name={tool.definition.name}
+              size={22}
+            />
           </div>
           <div className="min-w-0">
-            <div className="font-medium text-slate-950">
-              {tool.definition.name}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-slate-950">
+                {tool.definition.name}
+              </span>
+              <ToolStatusBadge status={tool.status} />
+              {isPinned ? (
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                  pinned
+                </span>
+              ) : null}
             </div>
-            <p className="mt-1 text-sm leading-5 text-slate-500">
-              {tool.definition.description}
-            </p>
+            <div className="mt-1 truncate font-mono text-xs text-slate-500">
+              {tool.resolvedCommand}
+            </div>
           </div>
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            disabled={isChecking}
+            onClick={() => void checkTool(tool.definition.id)}
+            size="sm"
+            variant="ghost"
+          >
+            <Search className="h-4 w-4" aria-hidden />
+            {isChecking ? "Checking" : "Check"}
+          </Button>
+          <Button
+            aria-label={isPinned ? "Unpin agent" : "Pin agent"}
+            onClick={() =>
+              isPinned
+                ? unpinAgent(tool.definition.id)
+                : pinAgent(tool.definition.id)
+            }
+            size="icon"
+            variant="ghost"
+          >
+            <Pin className={cn("h-4 w-4", isPinned && "fill-current")} aria-hidden />
+          </Button>
+          <Button
+            aria-label={expanded ? "Collapse agent profile" : "Expand agent profile"}
+            onClick={() => setExpanded((value) => !value)}
+            size="icon"
+            variant="ghost"
+          >
+            <ChevronDown
+              className={cn("h-4 w-4 transition", expanded && "rotate-180")}
+              aria-hidden
+            />
+          </Button>
         </div>
-        <ToolStatusBadge status={tool.status} />
       </div>
+      {!expanded ? null : (
+        <>
+          <p className="mt-3 text-sm leading-5 text-slate-500">
+            {tool.definition.description}
+          </p>
 
       <div className="mt-4 grid gap-3 text-xs">
         <div>
@@ -212,6 +313,27 @@ export function ToolCard({ tool }: ToolCardProps) {
             onChange={(event) => setInstallOverride(event.target.value)}
             placeholder={tool.definition.installCommandPreview ?? "Configure manually."}
             value={installOverride}
+          />
+        </label>
+
+        <div>
+          <span className="font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Uninstall command preview
+          </span>
+          <div className="mt-1 rounded-md border border-border bg-slate-50 px-3 py-2 font-mono text-slate-600">
+            {uninstallPreview || "Configure uninstall command manually."}
+          </div>
+        </div>
+
+        <label>
+          <span className="font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Uninstall command override
+          </span>
+          <input
+            className="mt-1 h-9 w-full rounded-md border border-border bg-white px-3 font-mono text-xs text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            onChange={(event) => setUninstallOverride(event.target.value)}
+            placeholder={uninstallPreview || "npm uninstall -g package-name"}
+            value={uninstallOverride}
           />
         </label>
 
@@ -304,6 +426,31 @@ export function ToolCard({ tool }: ToolCardProps) {
         </div>
       ) : null}
 
+      {activeInstall ? (
+        <div className="mt-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
+                Install running
+              </div>
+              <div className="mt-1 text-xs leading-5 text-violet-900">
+                SuperTerminal is running the confirmed install command in the
+                background. Output will appear when the command completes.
+              </div>
+            </div>
+            <span className="rounded bg-white px-2 py-1 text-[11px] font-medium text-violet-700">
+              running
+            </span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-violet-100">
+            <div className="h-full w-1/3 animate-[install-progress_1.2s_ease-in-out_infinite] rounded-full bg-violet-500" />
+          </div>
+          <pre className="mt-2 whitespace-pre-wrap rounded border border-violet-100 bg-white/80 p-2 font-mono text-[11px] text-violet-950">
+            {activeInstall.command}
+          </pre>
+        </div>
+      ) : null}
+
       {latestInstall ? (
         <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
@@ -367,6 +514,18 @@ export function ToolCard({ tool }: ToolCardProps) {
           Save Install Override
         </Button>
         <Button
+          onClick={() =>
+            updateToolConfig(tool.definition.id, {
+              uninstallCommandOverride: uninstallOverride.trim() || undefined,
+            })
+          }
+          size="sm"
+          variant="secondary"
+        >
+          <Save className="h-4 w-4" aria-hidden />
+          Save Uninstall Override
+        </Button>
+        <Button
           onClick={() => resetToolConfig(tool.definition.id)}
           size="sm"
           variant="ghost"
@@ -387,7 +546,19 @@ export function ToolCard({ tool }: ToolCardProps) {
           Reset Install
         </Button>
         <Button
-          onClick={copyInstallCommand}
+          onClick={() =>
+            updateToolConfig(tool.definition.id, {
+              uninstallCommandOverride: undefined,
+            })
+          }
+          size="sm"
+          variant="ghost"
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden />
+          Reset Uninstall
+        </Button>
+        <Button
+          onClick={() => copyCommand(installPreview)}
           size="sm"
           variant="ghost"
         >
@@ -413,6 +584,15 @@ export function ToolCard({ tool }: ToolCardProps) {
           {isRunning ? "Installing..." : "Install with SuperTerminal"}
         </Button>
         <Button
+          disabled={isRunning || !uninstallPreview}
+          onClick={handleUninstallClick}
+          size="sm"
+          variant="ghost"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+          Uninstall
+        </Button>
+        <Button
           disabled={needsProjectForPreview || tool.status !== "ready"}
           onClick={() =>
             void buildLaunchSpec(tool.definition.id, selectedProject?.path)
@@ -422,7 +602,16 @@ export function ToolCard({ tool }: ToolCardProps) {
         >
           Build Launch Preview
         </Button>
+        <Button
+          onClick={() => removeAgent(tool.definition.id)}
+          size="sm"
+          variant="ghost"
+        >
+          Remove Agent
+        </Button>
       </div>
+        </>
+      )}
 
       {confirmOpen && pendingValidation ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
@@ -430,7 +619,7 @@ export function ToolCard({ tool }: ToolCardProps) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-sm font-semibold text-slate-950">
-                  Confirm local install command
+                  Confirm local {pendingAction} command
                 </div>
                 <p className="mt-1 text-sm leading-5 text-slate-500">
                   SuperTerminal runs only the command shown here after your
@@ -476,7 +665,7 @@ export function ToolCard({ tool }: ToolCardProps) {
               >
                 {pendingValidation.reason}
                 <div className="mt-2">
-                  This may modify your system by installing packages or CLI
+                  This may modify your system by installing or removing packages or CLI
                   tools. SuperTerminal does not bundle this tool, manage
                   credentials, or perform login for you.
                 </div>
@@ -487,16 +676,19 @@ export function ToolCard({ tool }: ToolCardProps) {
               <Button onClick={() => setConfirmOpen(false)} variant="ghost">
                 Cancel
               </Button>
-              <Button onClick={copyInstallCommand} variant="secondary">
+              <Button
+                onClick={() => copyCommand(pendingValidation.command)}
+                variant="secondary"
+              >
                 <Clipboard className="h-4 w-4" aria-hidden />
                 Copy Command
               </Button>
               <Button
                 disabled={!pendingValidation.isAllowed || isRunning}
-                onClick={() => void handleRunInstall()}
+                onClick={() => void handleRunSetupCommand()}
                 variant="primary"
               >
-                Run Install
+                Run {pendingAction === "install" ? "Install" : "Uninstall"}
               </Button>
             </div>
           </div>
@@ -532,4 +724,111 @@ function DiagnosticRow({
       </div>
     </div>
   );
+}
+
+async function recheckToolAfterSetup(
+  checkTool: (adapterId: string) => Promise<{ status: string } | undefined>,
+  adapterId: string,
+) {
+  await wait(2500);
+  const firstResult = await checkTool(adapterId);
+
+  if (firstResult?.status === "ready" || firstResult?.status === "missing") {
+    return;
+  }
+
+  await wait(3000);
+  await checkTool(adapterId);
+}
+
+function deriveUninstallCommand(command: string) {
+  const tokens = parseCommandTokens(command);
+  if (tokens.length < 2) {
+    return undefined;
+  }
+
+  const executable = tokens[0];
+  const commandName = executable
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/\.(cmd|exe|bat)$/i, "")
+    .toLowerCase();
+  const args = tokens.slice(1);
+
+  if (
+    commandName === "npm" &&
+    args.length >= 3 &&
+    args[0] === "install" &&
+    args[1] === "-g"
+  ) {
+    return [executable, "uninstall", "-g", ...args.slice(2)].join(" ");
+  }
+
+  if (
+    commandName === "pnpm" &&
+    args.length >= 3 &&
+    args[0] === "add" &&
+    args[1] === "-g"
+  ) {
+    return [executable, "remove", "-g", ...args.slice(2)].join(" ");
+  }
+
+  if (
+    commandName === "yarn" &&
+    args.length >= 3 &&
+    args[0] === "global" &&
+    args[1] === "add"
+  ) {
+    return [executable, "global", "remove", ...args.slice(2)].join(" ");
+  }
+
+  if (commandName === "cargo" && args.length >= 2 && args[0] === "install") {
+    return [executable, "uninstall", ...args.slice(1)].join(" ");
+  }
+
+  if (commandName === "pipx" && args.length >= 2 && args[0] === "install") {
+    return [executable, "uninstall", ...args.slice(1)].join(" ");
+  }
+
+  return undefined;
+}
+
+function parseCommandTokens(command: string) {
+  const tokens: string[] = [];
+  let current = "";
+  let quote: string | undefined;
+
+  for (const character of command.trim()) {
+    if ((character === '"' || character === "'") && !quote) {
+      quote = character;
+      continue;
+    }
+
+    if (character === quote) {
+      quote = undefined;
+      continue;
+    }
+
+    if (/\s/.test(character) && !quote) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current) {
+    tokens.push(current);
+  }
+
+  return quote ? [] : tokens;
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
 }

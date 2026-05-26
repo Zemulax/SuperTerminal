@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useHistoryStore } from "@/stores/historyStore";
 import { ToolCard } from "@/components/tools/ToolCard";
@@ -7,18 +8,19 @@ import { useTerminalPreferencesStore } from "@/stores/terminalPreferencesStore";
 import { useToolStore } from "@/stores/toolStore";
 
 type SettingsPanelProps = {
+  onOpenCatalogue: () => void;
   open: boolean;
   onClose: () => void;
 };
 
 const sections = [
   {
-    title: "Tool adapters",
-    body: "Adapters define local CLI commands, version checks, command overrides, install guidance, and launch profiles.",
+    title: "Agent profiles",
+    body: "Profiles define local CLI commands, version checks, command overrides, install guidance, launch profiles, and environment variables.",
   },
   {
     title: "Terminal preferences",
-    body: "Default shell, font size, scrollback, and terminal theme controls will live here later.",
+    body: "Font size, font family, line height, and cursor behavior are configurable for the embedded terminal.",
   },
   {
     title: "Launch profiles",
@@ -34,21 +36,28 @@ const sections = [
   },
   {
     title: "Transcript capture",
-    body: "Terminal transcript capture is local-only demo state for now; persistence comes later.",
+    body: "Transcript previews are local, bounded, optional, and off by default.",
   },
   {
     title: "Session safety",
-    body: "Confirm-before-close and active-session recovery settings will be added after the PTY MVP.",
+    body: "SuperTerminal keeps one active PTY session at a time and requires explicit user action for launches.",
   },
   {
     title: "Privacy/local-first",
-    body: "SuperTerminal does not upload project code or manage external credentials.",
+    body: "SuperTerminal does not bundle agents, upload project code, or run installs without confirmation.",
   },
 ];
 
-export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
+export function SettingsPanel({
+  onOpenCatalogue,
+  open,
+  onClose,
+}: SettingsPanelProps) {
   const tools = useToolStore((state) => state.tools);
   const installHistory = useInstallStore((state) => state.installHistory);
+  const activeInstallAttempt = useInstallStore(
+    (state) => state.activeInstallAttempt,
+  );
   const historySettings = useHistoryStore((state) => state.settings);
   const updateHistorySettings = useHistoryStore((state) => state.updateSettings);
   const clearHistory = useHistoryStore((state) => state.clearHistory);
@@ -61,23 +70,31 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const resetTerminalPreferences = useTerminalPreferencesStore(
     (state) => state.resetPreferences,
   );
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (activeInstallAttempt?.status !== "running") {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [activeInstallAttempt?.status]);
 
   if (!open) {
     return null;
   }
 
-  const namedTools = tools.filter((tool) => tool.definition.id !== "generic");
-  const customTools = tools.filter((tool) => tool.definition.id === "generic");
   const statusGroups = [
-    { title: "Ready", tools: namedTools.filter((tool) => tool.status === "ready") },
-    { title: "Missing", tools: namedTools.filter((tool) => tool.status === "missing") },
+    { title: "Ready", tools: tools.filter((tool) => tool.status === "ready") },
+    { title: "Missing", tools: tools.filter((tool) => tool.status === "missing") },
     {
       title: "Needs Setup",
-      tools: namedTools.filter((tool) => tool.status === "needs_setup"),
+      tools: tools.filter((tool) => tool.status === "needs_setup"),
     },
     {
       title: "Not Checked",
-      tools: namedTools.filter((tool) =>
+      tools: tools.filter((tool) =>
         ["not_checked", "checking", "error"].includes(tool.status),
       ),
     },
@@ -244,14 +261,24 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-950">Tool adapters</h2>
-          <p className="mt-1 text-sm leading-5 text-slate-500">
-            SuperTerminal does not bundle or install these tools. Detection only
-            runs short local version commands. Install commands are shown,
-            validated, and require confirmation before execution. Command
-            overrides are executable paths or command names; launch args live in
-            each tool's launch profile.
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-950">
+                Agent profiles
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-slate-500">
+                SuperTerminal does not bundle or install these agents. Detection
+                only runs short local version commands. Install commands are
+                shown, validated, and require confirmation before execution.
+                Expand a profile to configure command overrides, launch
+                profiles, install settings, diagnostics, and environment
+                variables.
+              </p>
+            </div>
+            <Button onClick={onOpenCatalogue} size="sm" variant="primary">
+              Agent Catalogue
+            </Button>
+          </div>
           <div className="mt-4 space-y-5">
             {statusGroups.map((group) => (
               <section key={group.title}>
@@ -276,26 +303,35 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
         <div className="mt-6">
           <h2 className="text-sm font-semibold text-slate-950">
-            Advanced / Custom tools
-          </h2>
-          <p className="mt-1 text-sm leading-5 text-slate-500">
-            Generic CLI remains available for testing custom commands, but it is
-            kept out of the main header until configured.
-          </p>
-          <div className="mt-3 space-y-3">
-            {customTools.map((tool) => (
-              <ToolCard key={tool.definition.id} tool={tool} />
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-950">
             Install history
           </h2>
           <p className="mt-1 text-sm leading-5 text-slate-500">
             Recent install attempts are kept only for this app session.
           </p>
+          {activeInstallAttempt?.status === "running" ? (
+            <div className="mt-3 rounded-md border border-violet-200 bg-violet-50 p-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
+                    Install in progress
+                  </div>
+                  <div className="mt-1 truncate font-mono text-xs text-violet-950">
+                    {activeInstallAttempt.command}
+                  </div>
+                  <div className="mt-1 text-xs leading-5 text-violet-800">
+                    Running asynchronously. SuperTerminal remains usable while
+                    the command completes.
+                  </div>
+                </div>
+                <span className="shrink-0 rounded bg-white px-2 py-1 text-[11px] font-medium text-violet-700">
+                  {formatElapsed(activeInstallAttempt.startedAt, now)}
+                </span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-violet-100">
+                <div className="h-full w-1/3 animate-[install-progress_1.2s_ease-in-out_infinite] rounded-full bg-violet-500" />
+              </div>
+            </div>
+          ) : null}
           <div className="mt-3 space-y-2">
             {installHistory.length === 0 ? (
               <div className="rounded-md border border-border bg-slate-50 px-3 py-2 text-sm text-slate-500">
@@ -336,4 +372,21 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       </div>
     </div>
   );
+}
+
+function formatElapsed(startedAt: string | undefined, now: number) {
+  const start = Number(startedAt);
+  if (!Number.isFinite(start) || start <= 0) {
+    return "running";
+  }
+
+  const totalSeconds = Math.max(0, Math.floor((now - start) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes <= 0) {
+    return `${seconds}s`;
+  }
+
+  return `${minutes}m ${seconds}s`;
 }

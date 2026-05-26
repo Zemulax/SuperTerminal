@@ -1,5 +1,9 @@
 # SuperTerminal
 
+<p align="center">
+  <img src="docs/assets/superterminal-icon.png" alt="SuperTerminal app icon" width="120" />
+</p>
+
 One terminal surface for your AI coding agents.
 
 ## What is SuperTerminal?

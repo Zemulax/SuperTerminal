@@ -13,8 +13,10 @@ pub fn validate_install_command(
 }
 
 #[tauri::command]
-pub fn run_install_command(
+pub async fn run_install_command(
     request: RunInstallCommandRequest,
 ) -> Result<InstallAttemptResult, String> {
-    install_runner::run_install_command(request)
+    tauri::async_runtime::spawn_blocking(move || install_runner::run_install_command(request))
+        .await
+        .map_err(|error| format!("Install worker failed: {error}"))?
 }

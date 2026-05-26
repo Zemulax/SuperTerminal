@@ -12,8 +12,11 @@ export function LaunchProfileEditor({
   tool,
   compact = false,
 }: LaunchProfileEditorProps) {
+  const storedProfile = useToolStore(
+    (state) => state.launchProfilesByAdapterId[tool.definition.id],
+  );
   const getLaunchProfile = useToolStore((state) => state.getLaunchProfile);
-  const profile = getLaunchProfile(tool.definition.id);
+  const profile = storedProfile ?? getLaunchProfile(tool.definition.id);
   const updateLaunchProfile = useToolStore((state) => state.updateLaunchProfile);
   const resetLaunchProfile = useToolStore((state) => state.resetLaunchProfile);
 

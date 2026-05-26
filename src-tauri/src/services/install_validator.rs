@@ -74,17 +74,17 @@ pub fn validate_command_text(command: &str) -> InstallCommandValidationResult {
     let args = tokens[1..].to_vec();
     let command_name = normalized_command_name(&executable);
 
-    if is_allowed_install_pattern(&command_name, &args) {
+    if let Some(action) = allowed_package_manager_action(&command_name, &args) {
         return InstallCommandValidationResult {
             is_allowed: true,
             requires_manual_execution: false,
             is_blocked: false,
-            reason: "Allowed simple package-manager install command.".to_string(),
+            reason: format!("Allowed simple package-manager {action} command."),
             command: trimmed.to_string(),
             executable: Some(executable),
             args,
             warnings: vec![
-                "This command may modify your system by installing packages.".to_string(),
+                format!("This command may modify your system by {action}ing packages."),
                 "SuperTerminal will run exactly the command shown after confirmation."
                     .to_string(),
             ],
@@ -109,7 +109,7 @@ pub fn validate_command_text(command: &str) -> InstallCommandValidationResult {
 
     manual_only(
         trimmed,
-        "Only simple package-manager install commands are executable in SuperTerminal v1.",
+        "Only simple package-manager install/uninstall commands are executable in SuperTerminal v1.",
     )
 }
 
@@ -228,32 +228,55 @@ fn normalized_command_name(executable: &str) -> String {
     file_name
 }
 
-fn is_allowed_install_pattern(command_name: &str, args: &[String]) -> bool {
+fn allowed_package_manager_action(command_name: &str, args: &[String]) -> Option<&'static str> {
     match command_name {
-        "npm" => args.len() >= 3
+        "npm" if args.len() >= 3
             && args[0] == "install"
             && args[1] == "-g"
-            && args[2..].iter().all(is_package_token),
-        "pnpm" => args.len() >= 3
+            && args[2..].iter().all(is_package_token) => Some("install"),
+        "npm" if args.len() >= 3
+            && ["uninstall", "remove", "rm"].contains(&args[0].as_str())
+            && args[1] == "-g"
+            && args[2..].iter().all(is_package_token) => Some("uninstall"),
+        "pnpm" if args.len() >= 3
             && args[0] == "add"
             && args[1] == "-g"
-            && args[2..].iter().all(is_package_token),
-        "yarn" => args.len() >= 3
+            && args[2..].iter().all(is_package_token) => Some("install"),
+        "pnpm" if args.len() >= 3
+            && ["remove", "rm"].contains(&args[0].as_str())
+            && args[1] == "-g"
+            && args[2..].iter().all(is_package_token) => Some("uninstall"),
+        "yarn" if args.len() >= 3
             && args[0] == "global"
             && args[1] == "add"
-            && args[2..].iter().all(is_package_token),
-        "cargo" => args.len() >= 2
+            && args[2..].iter().all(is_package_token) => Some("install"),
+        "yarn" if args.len() >= 3
+            && args[0] == "global"
+            && ["remove", "rm"].contains(&args[1].as_str())
+            && args[2..].iter().all(is_package_token) => Some("uninstall"),
+        "cargo" if args.len() >= 2
             && args[0] == "install"
-            && args[1..].iter().all(is_package_token),
-        "pipx" => args.len() >= 2
+            && args[1..].iter().all(is_package_token) => Some("install"),
+        "cargo" if args.len() >= 2
+            && args[0] == "uninstall"
+            && args[1..].iter().all(is_package_token) => Some("uninstall"),
+        "pipx" if args.len() >= 2
             && args[0] == "install"
-            && args[1..].iter().all(is_package_token),
-        "python" | "python3" | "py" => args.len() >= 4
+            && args[1..].iter().all(is_package_token) => Some("install"),
+        "pipx" if args.len() >= 2
+            && args[0] == "uninstall"
+            && args[1..].iter().all(is_package_token) => Some("uninstall"),
+        "python" | "python3" | "py" if args.len() >= 4
             && args[0] == "-m"
             && args[1] == "pip"
             && args[2] == "install"
-            && args[3..].iter().all(is_package_token),
-        _ => false,
+            && args[3..].iter().all(is_package_token) => Some("install"),
+        "python" | "python3" | "py" if args.len() >= 4
+            && args[0] == "-m"
+            && args[1] == "pip"
+            && ["uninstall", "remove"].contains(&args[2].as_str())
+            && args[3..].iter().all(is_package_token) => Some("uninstall"),
+        _ => None,
     }
 }
 

@@ -82,6 +82,15 @@ a:hover {
   font-weight: 500;
   font-size: 1.1rem;
   color: var(--purple);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.logo img {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
 }
 
 .nav-links {
@@ -100,8 +109,16 @@ a:hover {
 
 /* Hero Section */
 .hero {
-  padding: 6rem 0 4rem;
+  padding: 4.5rem 0 4rem;
   text-align: center;
+}
+
+.hero-brand-icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 1.25rem;
+  border-radius: 18px;
+  filter: drop-shadow(0 14px 24px rgba(37, 99, 235, 0.18));
 }
 
 .hero-title {
@@ -381,6 +398,15 @@ footer {
   font-family: var(--font-mono);
   color: var(--purple);
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.footer-brand img {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
 }
 
 .footer-links {
