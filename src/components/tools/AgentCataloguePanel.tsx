@@ -22,7 +22,8 @@ const categories: Array<{ value: AgentCategory | "all"; label: string }> = [
 export function AgentCataloguePanel({ open, onClose }: AgentCataloguePanelProps) {
   const searchQuery = useToolStore((state) => state.searchQuery);
   const selectedCategory = useToolStore((state) => state.selectedCategory);
-  useToolStore((state) => state.adapters);
+  // Subscribe to adapters so the catalogue re-renders when the list changes.
+  void useToolStore((state) => state.adapters);
   const setSearchQuery = useToolStore((state) => state.setCatalogueSearchQuery);
   const setCategory = useToolStore((state) => state.setCatalogueCategory);
   const getCatalogueFiltered = useToolStore((state) => state.getCatalogueFiltered);

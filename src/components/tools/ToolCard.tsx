@@ -431,7 +431,9 @@ export function ToolCard({ tool }: ToolCardProps) {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
-                Install running
+                {/\b(uninstall|remove|rm)\b/i.test(activeInstall.command)
+                  ? "Uninstall running"
+                  : "Install running"}
               </div>
               <div className="mt-1 text-xs leading-5 text-violet-900">
                 SuperTerminal is running the confirmed install command in the

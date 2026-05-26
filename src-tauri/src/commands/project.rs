@@ -36,7 +36,12 @@ $dialog.ValidateNames = $false
 $dialog.Multiselect = $false
 $dialog.FileName = 'Select this folder'
 if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-  $selected = [System.IO.Path]::GetDirectoryName($dialog.FileName)
+  $fileName = $dialog.FileName
+  if ([System.IO.Directory]::Exists($fileName)) {
+    $selected = $fileName
+  } else {
+    $selected = [System.IO.Path]::GetDirectoryName($fileName)
+  }
   if (-not [string]::IsNullOrWhiteSpace($selected)) {
     [Console]::Out.Write($selected)
   }
