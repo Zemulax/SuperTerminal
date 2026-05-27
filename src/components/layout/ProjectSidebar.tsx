@@ -1,4 +1,3 @@
-import { FormEvent, useState } from "react";
 import { AlertTriangle, FolderOpen, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,19 +10,11 @@ export function ProjectSidebar() {
   const isOpeningProject = useProjectStore((state) => state.isOpeningProject);
   const isScanningProject = useProjectStore((state) => state.isScanningProject);
   const error = useProjectStore((state) => state.error);
-  const openProjectByPath = useProjectStore((state) => state.openProjectByPath);
   const openProjectWithPicker = useProjectStore(
     (state) => state.openProjectWithPicker,
   );
   const scanProject = useProjectStore((state) => state.scanProject);
-  const loadMockProject = useProjectStore((state) => state.loadMockProject);
   const clearProject = useProjectStore((state) => state.clearProject);
-  const [pathInput, setPathInput] = useState("");
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    void openProjectByPath(pathInput);
-  };
 
   const handleRescan = () => {
     if (selectedProject) {
@@ -53,38 +44,17 @@ export function ProjectSidebar() {
           </Button>
         </div>
 
-        <form className="mt-3 space-y-2" onSubmit={handleSubmit}>
-          <input
-            className="h-9 w-full rounded-md border border-border bg-white px-3 font-mono text-xs text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-            onChange={(event) => setPathInput(event.target.value)}
-            placeholder="Paste local project path"
-            value={pathInput}
-          />
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              disabled={isOpeningProject || isScanningProject}
-              onClick={() => void openProjectWithPicker()}
-              size="sm"
-              type="button"
-              variant="primary"
-            >
-              <FolderOpen className="h-4 w-4" aria-hidden />
-              {isOpeningProject ? "Opening..." : "Choose Folder"}
-            </Button>
-            <Button
-              disabled={isOpeningProject || isScanningProject}
-              size="sm"
-              type="submit"
-              variant="secondary"
-            >
-              Open Path
-            </Button>
-            <Button onClick={loadMockProject} size="sm" variant="secondary">
-              Demo
-            </Button>
-          </div>
-        </form>
+        <Button
+          className="mt-3 w-full"
+          disabled={isOpeningProject || isScanningProject}
+          onClick={() => void openProjectWithPicker()}
+          size="sm"
+          type="button"
+          variant="primary"
+        >
+          <FolderOpen className="h-4 w-4" aria-hidden />
+          {isOpeningProject ? "Opening..." : "Choose Folder"}
+        </Button>
 
         {selectedProject ? (
           <div className="mt-3 rounded-md border border-border bg-white px-3 py-2">
@@ -128,9 +98,20 @@ export function ProjectSidebar() {
               Open a local project
             </p>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Paste a folder path to scan files locally. Heavy folders like
+              Choose a folder to scan files locally. Heavy folders like
               node_modules and .git are skipped.
             </p>
+            <Button
+              className="mt-4"
+              disabled={isOpeningProject || isScanningProject}
+              onClick={() => void openProjectWithPicker()}
+              size="sm"
+              type="button"
+              variant="primary"
+            >
+              <FolderOpen className="h-4 w-4" aria-hidden />
+              Choose Folder
+            </Button>
           </div>
         )}
       </div>

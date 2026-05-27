@@ -1,4 +1,5 @@
 import { Search, X } from "lucide-react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { AgentIcon } from "@/components/tools/AgentIcon";
 import { useToolStore } from "@/stores/toolStore";
@@ -20,24 +21,24 @@ const categories: Array<{ value: AgentCategory | "all"; label: string }> = [
 ];
 
 export function AgentCataloguePanel({ open, onClose }: AgentCataloguePanelProps) {
+  const adapters = useToolStore((state) => state.adapters);
   const searchQuery = useToolStore((state) => state.searchQuery);
   const selectedCategory = useToolStore((state) => state.selectedCategory);
-  // Subscribe to adapters so the catalogue re-renders when the list changes.
-  void useToolStore((state) => state.adapters);
   const setSearchQuery = useToolStore((state) => state.setCatalogueSearchQuery);
   const setCategory = useToolStore((state) => state.setCatalogueCategory);
-  const getCatalogueFiltered = useToolStore((state) => state.getCatalogueFiltered);
   const addAgent = useToolStore((state) => state.addAgentToSuperTerminal);
   const removeAgent = useToolStore((state) => state.removeAgentFromSuperTerminal);
   const pinAgent = useToolStore((state) => state.pinAgent);
   const unpinAgent = useToolStore((state) => state.unpinAgent);
   const checkTool = useToolStore((state) => state.checkTool);
+  const entries = useMemo(
+    () => filterCatalogue(adapters, searchQuery, selectedCategory),
+    [adapters, searchQuery, selectedCategory],
+  );
 
   if (!open) {
     return null;
   }
-
-  const entries = getCatalogueFiltered();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
@@ -114,6 +115,32 @@ export function AgentCataloguePanel({ open, onClose }: AgentCataloguePanelProps)
       </div>
     </div>
   );
+}
+
+function filterCatalogue(
+  adapters: ToolAdapterState[],
+  searchQuery: string,
+  selectedCategory: AgentCategory | "all",
+) {
+  const query = searchQuery.trim().toLowerCase();
+
+  return adapters.filter((adapter) => {
+    const categoryMatch =
+      selectedCategory === "all" ||
+      adapter.definition.category === selectedCategory;
+    const searchable = [
+      adapter.definition.name,
+      adapter.definition.shortName,
+      adapter.definition.description,
+      adapter.definition.defaultCommand,
+      ...(adapter.definition.tags ?? []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return categoryMatch && (!query || searchable.includes(query));
+  });
 }
 
 function AgentCatalogueCard({

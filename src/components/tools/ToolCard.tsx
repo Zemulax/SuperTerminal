@@ -431,7 +431,7 @@ export function ToolCard({ tool }: ToolCardProps) {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
-                {/\b(uninstall|remove|rm)\b/i.test(activeInstall.command)
+                {isUninstallCommand(activeInstall.command)
                   ? "Uninstall running"
                   : "Install running"}
               </div>
@@ -793,6 +793,16 @@ function deriveUninstallCommand(command: string) {
   }
 
   return undefined;
+}
+
+function isUninstallCommand(command: string) {
+  const [, ...args] = parseCommandTokens(command).map((token) =>
+    token.toLowerCase(),
+  );
+
+  return args.some(
+    (token) => token === "uninstall" || token === "remove" || token === "rm",
+  );
 }
 
 function parseCommandTokens(command: string) {

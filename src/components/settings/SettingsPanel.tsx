@@ -517,7 +517,7 @@ function LaunchProfileRow({ tool }: { tool: ToolAdapterState }) {
           </div>
         </div>
         <div className="hidden shrink-0 text-right text-[11px] text-slate-500 sm:block">
-          {profile.workingDirectoryMode.replace("_", " ")} ·{" "}
+          {profile.workingDirectoryMode.replace(/_/g, " ")} ·{" "}
           {profile.confirmBeforeLaunch ? "confirm" : "no confirm"}
         </div>
       </summary>
