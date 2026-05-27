@@ -1,7 +1,17 @@
-import { existsSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { join } from "node:path";
 
-const targetName = "SuperTerminal-v0.1.0-alpha-windows_x64-setup.exe";
+const packageJson = JSON.parse(
+  readFileSync(join(process.cwd(), "package.json"), "utf8"),
+);
+const targetName = `SuperTerminal-v${packageJson.version}-windows_x64-setup.exe`;
 const nsisDir = join(process.cwd(), "src-tauri", "target", "release", "bundle", "nsis");
 
 if (!existsSync(nsisDir)) {
@@ -23,7 +33,7 @@ if (installers.length === 0) {
 }
 
 const targetPath = join(nsisDir, targetName);
-const source = installers.find((installer) => installer.name !== targetName) ?? installers[0];
+const source = installers[0];
 
 if (source.path === targetPath) {
   console.log(`Windows installer already named ${targetName}.`);
