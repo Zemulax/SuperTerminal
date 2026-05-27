@@ -1,0 +1,60 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to build, for example v0.1.1-alpha"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build and publish Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: "SuperTerminal ${{ env.RELEASE_TAG }}"
+          releaseBody: |
+            SuperTerminal automated Windows build.
+
+            SuperTerminal is one terminal surface for your AI coding agents.
+
+            This is an early alpha release. Expect rough edges.
+
+            Notes:
+            - SuperTerminal does not bundle third-party CLI tools.
+            - SuperTerminal does not manage cloud accounts or OAuth.
+            - Tool installation commands require user confirmation.
+            - Early builds may not be code-signed yet, so Windows may show a warning.
+          releaseDraft: false
+          prerelease: ${{ contains(env.RELEASE_TAG, 'alpha') || contains(env.RELEASE_TAG, 'beta') || contains(env.RELEASE_TAG, 'rc') }}
