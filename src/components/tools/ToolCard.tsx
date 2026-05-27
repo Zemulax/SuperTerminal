@@ -194,7 +194,7 @@ export function ToolCard({ tool }: ToolCardProps) {
               iconKey={tool.definition.iconKey}
               muted={["missing", "not_checked", "error"].includes(tool.status)}
               name={tool.definition.name}
-              size={22}
+              size={26}
             />
           </div>
           <div className="min-w-0">

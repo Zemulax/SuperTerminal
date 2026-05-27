@@ -501,7 +501,7 @@ function LaunchProfileRow({ tool }: { tool: ToolAdapterState }) {
               iconKey={tool.definition.iconKey}
               muted={["missing", "not_checked", "error"].includes(tool.status)}
               name={tool.definition.name}
-              size={20}
+              size={24}
             />
           </div>
           <div className="min-w-0">

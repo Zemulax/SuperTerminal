@@ -117,7 +117,7 @@ function AgentIconButton({
     <button
       aria-label={`Select ${adapter.definition.name}`}
       className={cn(
-        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition",
+        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border transition",
         isActive
           ? "border-emerald-400 bg-slate-950 text-white shadow-[0_0_0_2px_rgba(52,211,153,0.16)]"
           : isMuted
@@ -132,7 +132,7 @@ function AgentIconButton({
         iconKey={adapter.definition.iconKey}
         muted={!isActive && isMuted}
         name={adapter.definition.name}
-        size={21}
+        size={30}
       />
       <span
         className={cn(

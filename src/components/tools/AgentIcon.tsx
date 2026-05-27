@@ -1,11 +1,12 @@
 import claudeIcon from "@/assets/agents/claude-code.svg";
 import codexIcon from "@/assets/agents/codex.svg";
 import buffIcon from "@/assets/agents/buff.png";
+import freebuffIcon from "@/assets/agents/freebuff.svg";
 import geminiIcon from "@/assets/agents/gemini-cli.svg";
-import gitlawbIcon from "@/assets/agents/gitlawb.png";
 import gooseIcon from "@/assets/agents/goose.svg";
 import grokIcon from "@/assets/agents/grok.svg";
 import opencodeIcon from "@/assets/agents/opencode.svg";
+import openclaudeIcon from "@/assets/agents/openclaude.svg";
 import { getAgentIconLabel } from "@/lib/statusIcons";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +23,12 @@ const agentIconAssets: Record<string, string | undefined> = {
   claude: claudeIcon,
   codebuff: buffIcon,
   codex: codexIcon,
-  freebuff: buffIcon,
+  freebuff: freebuffIcon,
   gemini: geminiIcon,
   goose: gooseIcon,
   grok: grokIcon,
   opencode: opencodeIcon,
-  openclaude: gitlawbIcon,
+  openclaude: openclaudeIcon,
 };
 
 export function AgentIcon({

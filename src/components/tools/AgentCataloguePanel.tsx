@@ -177,7 +177,7 @@ function AgentCatalogueCard({
             iconKey={agent.definition.iconKey}
             muted={isMissing}
             name={agent.definition.name}
-            size={26}
+            size={30}
           />
         </div>
         <div className="min-w-0 flex-1">
