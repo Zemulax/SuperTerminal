@@ -1,6 +1,6 @@
 [package]
 name = "superterminal"
-version = "0.1.2-alpha"
+version = "0.1.3"
 description = "One desktop terminal interface for AI coding CLIs."
 authors = ["SuperTerminal"]
 license = "Apache-2.0"
