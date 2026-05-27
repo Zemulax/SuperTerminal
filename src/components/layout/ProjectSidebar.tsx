@@ -58,10 +58,7 @@ export function ProjectSidebar() {
 
         {selectedProject ? (
           <div className="mt-3 rounded-md border border-border bg-white px-3 py-2">
-            <div className="truncate font-mono text-[11px] leading-4 text-slate-500">
-              {selectedProject.path}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <Badge>{selectedProject.totalFiles ?? 0} files</Badge>
               <Badge>{selectedProject.totalDirectories ?? 0} dirs</Badge>
               <Badge>{selectedProject.ignoredCount ?? 0} ignored</Badge>

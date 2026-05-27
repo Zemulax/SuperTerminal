@@ -62,7 +62,6 @@ export function TerminalShell() {
   const mode = useSessionStore((state) => state.mode);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const shell = useSessionStore((state) => state.shell);
-  const ptySession = useSessionStore((state) => state.ptySession);
   const activeRunningToolId = useSessionStore((state) => state.activeToolId);
   const activeRunningToolName = useSessionStore((state) => state.activeToolName);
   const cols = useSessionStore((state) => state.cols);
@@ -604,13 +603,11 @@ export function TerminalShell() {
             activeTool={activeTool}
             cols={cols}
             mode={mode}
-            project={selectedProject}
             rows={rows}
             sessionId={activeSessionId}
             shell={shell}
             status={sessionStatus}
             transcriptCaptureEnabled={historySettings.captureTranscript}
-            workingDirectory={ptySession?.projectPath}
           />
         </div>
       </div>
