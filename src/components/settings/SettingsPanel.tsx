@@ -417,7 +417,7 @@ export function SettingsPanel({
           title="About SuperTerminal"
         >
           <div className="rounded-md border border-border bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-            <div className="font-medium text-slate-900">SuperTerminal 0.0.1 alpha</div>
+            <div className="font-medium text-slate-900">SuperTerminal 0.1.0 alpha</div>
             <div className="mt-2">One terminal surface for your AI coding agents.</div>
             <div className="mt-2">License: Apache-2.0</div>
             <div className="mt-2">
@@ -431,7 +431,7 @@ export function SettingsPanel({
                 rel="noreferrer"
                 target="_blank"
               >
-                GitHub
+                Zemulax/SuperTerminal
               </a>
               <a
                 className="font-medium text-violet-700 hover:text-violet-900"
