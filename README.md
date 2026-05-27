@@ -64,6 +64,14 @@ SuperTerminal can detect, configure, and launch third-party CLI tools, but it do
 
 Third-party tools such as Codex, Claude, OpenCode, OpenClaude, Grok-compatible tools, and others remain governed by their own licenses, terms, and security policies.
 
+## Third-Party Logos
+
+Third-party names, logos, and trademarks shown in SuperTerminal are the property of their respective owners.
+
+Their use is for identification and interoperability only and does not imply endorsement, sponsorship, or affiliation unless explicitly stated.
+
+SuperTerminal does not bundle or redistribute third-party CLI tools.
+
 ## Installation
 
 Public alpha installers will be published through GitHub Releases.

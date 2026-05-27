@@ -1,3 +1,11 @@
+import claudeIcon from "@/assets/agents/claude-code.svg";
+import codexIcon from "@/assets/agents/codex.svg";
+import buffIcon from "@/assets/agents/buff.png";
+import geminiIcon from "@/assets/agents/gemini-cli.svg";
+import gitlawbIcon from "@/assets/agents/gitlawb.png";
+import gooseIcon from "@/assets/agents/goose.svg";
+import grokIcon from "@/assets/agents/grok.svg";
+import opencodeIcon from "@/assets/agents/opencode.svg";
 import { getAgentIconLabel } from "@/lib/statusIcons";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +17,19 @@ type AgentIconProps = {
   size?: number;
 };
 
+const agentIconAssets: Record<string, string | undefined> = {
+  aider: undefined,
+  claude: claudeIcon,
+  codebuff: buffIcon,
+  codex: codexIcon,
+  freebuff: buffIcon,
+  gemini: geminiIcon,
+  goose: gooseIcon,
+  grok: grokIcon,
+  opencode: opencodeIcon,
+  openclaude: gitlawbIcon,
+};
+
 export function AgentIcon({
   className,
   iconKey,
@@ -16,7 +37,32 @@ export function AgentIcon({
   name,
   size = 22,
 }: AgentIconProps) {
+  const iconSrc = iconKey ? agentIconAssets[iconKey] : undefined;
   const label = getAgentIconLabel(iconKey, name);
+
+  if (iconSrc) {
+    return (
+      <span
+        aria-hidden
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-md border bg-white shadow-sm",
+          muted
+            ? "border-slate-200 opacity-45 grayscale"
+            : "border-violet-200",
+          className,
+        )}
+        style={{ height: size, width: size }}
+        title={name}
+      >
+        <img
+          alt=""
+          className="h-full w-full object-contain"
+          draggable={false}
+          src={iconSrc}
+        />
+      </span>
+    );
+  }
 
   return (
     <span
