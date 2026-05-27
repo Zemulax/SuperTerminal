@@ -1,10 +1,11 @@
 [package]
 name = "superterminal"
-version = "0.0.1"
+version = "0.1.0"
 description = "One desktop terminal interface for AI coding CLIs."
 authors = ["SuperTerminal"]
-license = ""
-repository = ""
+license = "Apache-2.0"
+repository = "https://github.com/Zemulax/SuperTerminal"
+homepage = "https://zemulax.github.io/SuperTerminal/"
 edition = "2021"
 rust-version = "1.77.2"
 

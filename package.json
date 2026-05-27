@@ -1,15 +1,21 @@
 {
   "name": "superterminal",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "homepage": "https://zemulax.github.io/SuperTerminal/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zemulax/SuperTerminal.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "posttauri:build": "node scripts/rename-windows-installer.mjs"
   },
   "dependencies": {
     "@lobehub/icons": "^5.8.0",
