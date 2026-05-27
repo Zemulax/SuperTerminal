@@ -1,36 +1,5 @@
-import ClaudeCodeColor from "@lobehub/icons/es/ClaudeCode/components/Color";
-import ClaudeCodeMono from "@lobehub/icons/es/ClaudeCode/components/Mono";
-import CodexColor from "@lobehub/icons/es/Codex/components/Color";
-import CodexMono from "@lobehub/icons/es/Codex/components/Mono";
-import GeminiCLIColor from "@lobehub/icons/es/GeminiCLI/components/Color";
-import GeminiCLIMono from "@lobehub/icons/es/GeminiCLI/components/Mono";
-import GooseMono from "@lobehub/icons/es/Goose/components/Mono";
-import GrokMono from "@lobehub/icons/es/Grok/components/Mono";
-import OpenCodeMono from "@lobehub/icons/es/OpenCode/components/Mono";
-import type { ComponentType } from "react";
 import { getAgentIconLabel } from "@/lib/statusIcons";
 import { cn } from "@/lib/utils";
-
-type LobeIcon = ComponentType<{
-  className?: string;
-  color?: string;
-  size?: number | string;
-  title?: string;
-}>;
-
-type AgentIconPair = {
-  color: LobeIcon;
-  mono: LobeIcon;
-};
-
-const lobeIcons: Record<string, AgentIconPair | undefined> = {
-  claude: { color: ClaudeCodeColor, mono: ClaudeCodeMono },
-  codex: { color: CodexColor, mono: CodexMono },
-  gemini: { color: GeminiCLIColor, mono: GeminiCLIMono },
-  goose: { color: GooseMono, mono: GooseMono },
-  grok: { color: GrokMono, mono: GrokMono },
-  opencode: { color: OpenCodeMono, mono: OpenCodeMono },
-};
 
 type AgentIconProps = {
   iconKey?: string;
@@ -47,111 +16,23 @@ export function AgentIcon({
   name,
   size = 22,
 }: AgentIconProps) {
-  const Icon = iconKey ? lobeIcons[iconKey] : undefined;
-  const CustomIcon = iconKey ? customIcons[iconKey] : undefined;
-
-  if (Icon) {
-    const BrandIcon = muted ? Icon.mono : Icon.color;
-
-    return (
-      <BrandIcon
-        aria-hidden
-        className={cn(muted && "text-slate-400", className)}
-        size={size}
-        title={name}
-      />
-    );
-  }
-
-  if (CustomIcon) {
-    return (
-      <CustomIcon
-        aria-hidden
-        className={cn(muted && "text-slate-400", className)}
-        size={size}
-        title={name}
-      />
-    );
-  }
+  const label = getAgentIconLabel(iconKey, name);
 
   return (
     <span
       aria-hidden
-      className={cn("font-mono text-[11px] font-semibold", className)}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-md border font-mono font-bold leading-none tracking-tight",
+        label.length > 2 ? "text-[9px]" : "text-[10px]",
+        muted
+          ? "border-slate-200 bg-slate-100 text-slate-400"
+          : "border-violet-200 bg-white text-violet-700 shadow-sm",
+        className,
+      )}
+      style={{ height: size, width: size }}
+      title={name}
     >
-      {getAgentIconLabel(iconKey, name)}
+      {label}
     </span>
-  );
-}
-
-const customIcons: Record<string, LobeIcon | undefined> = {
-  codebuff: CodebuffMark,
-  freebuff: CodebuffMark,
-  openclaude: GitClaudeMark,
-};
-
-function GitClaudeMark({
-  className,
-  size = 22,
-  title,
-}: {
-  className?: string;
-  size?: number | string;
-  title?: string;
-}) {
-  return (
-    <svg
-      aria-hidden={!title}
-      className={className}
-      fill="none"
-      height={size}
-      role={title ? "img" : undefined}
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2.2"
-      viewBox="0 0 24 24"
-      width={size}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {title ? <title>{title}</title> : null}
-      <path d="M12 12v5.2" />
-      <path d="M7 7v4.2l4 4" />
-      <path d="M17 7v4.2l-4 4" />
-      <path d="M12 12l5-5" />
-      <circle cx="7" cy="5" r="2.1" />
-      <circle cx="17" cy="5" r="2.1" />
-      <circle cx="12" cy="11.7" r="2" />
-      <path d="M12 17.2l3.4 2v3.8L12 25l-3.4-2v-3.8l3.4-2Z" transform="translate(0 -2)" />
-      <path d="M15.4 19.4h2.1" />
-      <path d="M15.4 22.1h2.1" />
-    </svg>
-  );
-}
-
-function CodebuffMark({
-  className,
-  size = 22,
-  title,
-}: {
-  className?: string;
-  size?: number | string;
-  title?: string;
-}) {
-  return (
-    <svg
-      aria-hidden={!title}
-      className={className}
-      fill="currentColor"
-      height={size}
-      role={title ? "img" : undefined}
-      viewBox="0 0 24 24"
-      width={size}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {title ? <title>{title}</title> : null}
-      <path d="M7.2 2.2c.5 3.2 2 4.9 4.6 5.4.3.1.3.5 0 .6-2.6.5-4.1 2.2-4.6 5.4-.1.3-.5.3-.6 0-.5-3.2-2-4.9-4.6-5.4-.3-.1-.3-.5 0-.6 2.6-.5 4.1-2.2 4.6-5.4.1-.3.5-.3.6 0Z" />
-      <rect height="2.4" rx="0.4" width="9" x="12" y="12.3" />
-    </svg>
   );
 }
