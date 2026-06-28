@@ -60,8 +60,16 @@ export function getAgentIconLabel(iconKey?: string, name = ""): string {
       return "Ai";
     case "gemini":
       return "Ge";
+    case "kilo":
+      return "Ki";
     case "goose":
       return "Go";
+    case "antigravity":
+      return "Ag";
+    case "cursor":
+      return "Cu";
+    case "qwen":
+      return "Qw";
     case "generic":
       return "+";
     default:

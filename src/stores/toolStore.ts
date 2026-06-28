@@ -21,6 +21,16 @@ const DEFAULT_ADDED_AGENT_IDS = new Set([
   "opencode",
   "openclaude",
   "grok",
+  "codebuff",
+  "freebuff",
+  "aider",
+  "goose",
+]);
+const DEFAULT_PINNED_AGENT_IDS = new Set([
+  "codex",
+  "claude",
+  "opencode",
+  "grok",
 ]);
 
 type ToolState = {
@@ -160,13 +170,14 @@ function initialAdapters(): ToolAdapterState[] {
 
   return defaultToolAdapters.map((definition) => {
     const defaultAdded = DEFAULT_ADDED_AGENT_IDS.has(definition.id);
+    const defaultPinned = DEFAULT_PINNED_AGENT_IDS.has(definition.id);
     const storedConfig = configs[definition.id];
     const config: ToolAdapterConfig = {
       ...storedConfig,
       adapterId: definition.id,
       enabled: storedConfig?.enabled ?? true,
       addedToSuperTerminal: storedConfig?.addedToSuperTerminal ?? defaultAdded,
-      pinnedToRibbon: storedConfig?.pinnedToRibbon ?? defaultAdded,
+      pinnedToRibbon: storedConfig?.pinnedToRibbon ?? defaultPinned,
     };
 
     const resolvedCommand =
@@ -266,7 +277,6 @@ export const useToolStore = create<ToolState>((set, get) => ({
               config: {
                 ...adapter.config,
                 addedToSuperTerminal: true,
-                pinnedToRibbon: true,
               },
             }
           : adapter,
