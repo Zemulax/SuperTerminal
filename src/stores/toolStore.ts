@@ -50,6 +50,7 @@ type ToolState = {
   removeAgentFromSuperTerminal: (agentId: ToolAdapterId) => void;
   pinAgent: (agentId: ToolAdapterId) => void;
   unpinAgent: (agentId: ToolAdapterId) => void;
+  resetAgentLayout: () => void;
   isAgentAdded: (agentId: ToolAdapterId) => boolean;
   getPinnedAgents: () => ToolAdapterState[];
   getCatalogueFiltered: () => ToolAdapterState[];
@@ -354,6 +355,35 @@ export const useToolStore = create<ToolState>((set, get) => ({
       );
       saveConfigs(adapters);
       return { adapters, tools: addedTools(adapters) };
+    });
+  },
+  resetAgentLayout: () => {
+    set((state) => {
+      const adapters = state.adapters.map((adapter): ToolAdapterState => {
+        const defaultAdded = DEFAULT_ADDED_AGENT_IDS.has(adapter.definition.id);
+        const defaultPinned = DEFAULT_PINNED_AGENT_IDS.has(adapter.definition.id);
+
+        return {
+          ...adapter,
+          config: {
+            ...adapter.config,
+            addedToSuperTerminal: defaultAdded,
+            pinnedToRibbon: defaultPinned,
+          },
+        };
+      });
+      const tools = addedTools(adapters);
+      const activeStillAdded = tools.some(
+        (adapter) => adapter.definition.id === state.activeToolId,
+      );
+      saveConfigs(adapters);
+      return {
+        adapters,
+        tools,
+        activeToolId: activeStillAdded
+          ? state.activeToolId
+          : tools[0]?.definition.id ?? "codex",
+      };
     });
   },
   isAgentAdded: (agentId) =>

@@ -44,6 +44,7 @@ export function SettingsPanel({
   onClose,
 }: SettingsPanelProps) {
   const tools = useToolStore((state) => state.tools);
+  const resetAgentLayout = useToolStore((state) => state.resetAgentLayout);
   const installHistory = useInstallStore((state) => state.installHistory);
   const activeInstallAttempt = useInstallStore(
     (state) => state.activeInstallAttempt,
@@ -124,10 +125,19 @@ export function SettingsPanel({
             <p className="text-sm leading-5 text-slate-500">
               Add, check, configure, install, launch, and manage local agent profiles.
             </p>
-            <Button onClick={onOpenCatalogue} size="sm" variant="primary">
-              Agent Catalogue
-            </Button>
+            <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <Button onClick={resetAgentLayout} size="sm" variant="secondary">
+                Reset layout
+              </Button>
+              <Button onClick={onOpenCatalogue} size="sm" variant="primary">
+                Agent Catalogue
+              </Button>
+            </div>
           </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Reset layout restores default added profiles and ribbon pins without
+            changing command overrides, launch profiles, installs, or secrets.
+          </p>
           <div className="mt-4 space-y-5">
             {statusGroups.map((group) => (
               <section key={group.title}>
